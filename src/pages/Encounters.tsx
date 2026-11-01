@@ -193,7 +193,7 @@ export default function Encounters() {
                 <span>
                   <strong>{row.name}</strong>
                   <em>
-                    level {row.level || "—"} {row.agent ? `· ${row.agent}` : ""}
+                    level {row.level || "-"} {row.agent ? `· ${row.agent}` : ""}
                   </em>
                 </span>
               </span>

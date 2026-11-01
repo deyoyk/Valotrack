@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde_json::{json, Map, Value};
 
@@ -14,6 +15,10 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         .session(&settings.region)
         .await
         .map_err(|error| error.to_string())?;
+    let cache_key = format!("loadout:{}", session.puuid);
+    if let Some(cached) = state.cache_json_for(&cache_key, Duration::from_secs(60)) {
+        return Ok(cached);
+    }
     let loadout = match session
         .pd_get(&format!(
             "/personalization/v3/players/{}/playerloadout",
@@ -165,7 +170,7 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
     let card = index.resolve(ITEM_CARD, card_id);
     let title = index.resolve(ITEM_TITLE, title_id);
 
-    Ok(json!({
+    let value = json!({
         "available": true,
         "account": account,
         "guns": guns,
@@ -179,7 +184,9 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         "incognito": loadout.get("Incognito").cloned().unwrap_or(json!(false)),
         "ownedSkins": owned_skins,
         "version": loadout.get("Version").cloned().unwrap_or(json!(0))
-    }))
+    });
+    state.put_json(cache_key, value.clone());
+    Ok(value)
 }
 
 pub async fn set_skin(
@@ -312,6 +319,10 @@ pub async fn set_skin(
             .await
             .map_err(|error| format!("Couldn't save the loadout: {error}"))?,
     };
+    state
+        .json_cache
+        .lock()
+        .remove(&format!("loadout:{}", session.puuid));
     Ok(json!({
         "ok": true,
         "status": "equipped",

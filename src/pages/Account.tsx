@@ -118,17 +118,17 @@ export default function Account() {
                 <span className="profile-kicker">Signed-in Riot account</span>
                 <h2>
                   {identity?.gameName ?? "Riot account"}
-                  <em>#{identity?.tagLine ?? "—"}</em>
+                  <em>#{identity?.tagLine ?? "-"}</em>
                 </h2>
                 <div className="account-badges">
                   <span>
-                    <Globe2 size={12} /> {identity?.country ?? "—"} · {identity?.locale ?? "—"}
+                    <Globe2 size={12} /> {identity?.country ?? "-"} · {identity?.locale ?? "-"}
                   </span>
                   <span>
                     <CalendarDays size={12} /> {formatDate(identity?.createdAt ?? null)}
                   </span>
                   <span>
-                    <ShieldCheck size={12} /> {identity?.state ?? "—"}
+                    <ShieldCheck size={12} /> {identity?.state ?? "-"}
                   </span>
                 </div>
               </div>
@@ -171,7 +171,7 @@ export default function Account() {
                 </div>
                 <div>
                   <dt>Leaderboard</dt>
-                  <dd>{rank?.leaderboard ? `#${rank.leaderboard}` : "—"}</dd>
+                  <dd>{rank?.leaderboard ? `#${rank.leaderboard}` : "-"}</dd>
                 </div>
               </dl>
             </section>

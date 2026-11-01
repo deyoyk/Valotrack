@@ -64,7 +64,7 @@ export default function Offline() {
   useEffect(() => {
     void load();
   }, [load]);
-  usePoll(load, 3000);
+  usePoll(load, 5000);
 
   async function setStatusMode(mode: string) {
     setBusy(mode);
@@ -131,7 +131,7 @@ export default function Offline() {
           <h1>Vanish from the list.</h1>
           <p>
             Play with the friends list seeing offline, away or mobile. The relay rewrites
-            your outgoing presence on this machine — no third-party binary and no account.
+            your outgoing presence on this machine - no third-party binary and no account.
             It keeps running after you close Valotrack.
           </p>
         </div>

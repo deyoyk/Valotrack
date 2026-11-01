@@ -126,7 +126,7 @@ export default function Live() {
               </div>
               <div>
                 <span>3</span>
-                Queue up — intel loads itself
+                Queue up - intel loads itself
               </div>
             </div>
           </div>

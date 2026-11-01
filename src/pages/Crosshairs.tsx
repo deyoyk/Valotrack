@@ -553,7 +553,7 @@ export default function Crosshairs() {
             onChange={(event) => setSort(event.target.value as "popular" | "name")}
           >
             <option value="popular">Most copied</option>
-            <option value="name">Name A–Z</option>
+            <option value="name">Name A-Z</option>
           </select>
         </div>
       </div>

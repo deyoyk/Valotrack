@@ -48,7 +48,7 @@ export default function Remote() {
           <h1>Your board, in your pocket.</h1>
           <p>
             Scan the QR code to mirror the live board on your phone over your local
-            network. Ranks, parties, smurf flags and queue controls — no cloud.
+            network. Ranks, parties, smurf flags and queue controls - no cloud.
           </p>
         </div>
         <div className="head-status">
@@ -139,9 +139,9 @@ export default function Remote() {
           </div>
           <div className="remote-meta">
             <span>Port</span>
-            <strong>{info?.port ?? "—"}</strong>
+            <strong>{info?.port ?? "-"}</strong>
             <span>Token</span>
-            <code>{info?.token ? `${info.token.slice(0, 4)}••••${info.token.slice(-4)}` : "—"}</code>
+            <code>{info?.token ? `${info.token.slice(0, 4)}••••${info.token.slice(-4)}` : "-"}</code>
           </div>
         </section>
       </div>

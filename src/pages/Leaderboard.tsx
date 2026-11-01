@@ -20,7 +20,7 @@ function PlayerRow({
   return (
     <div className={player.isSelf ? "leaderboard-row self" : "leaderboard-row"}>
       <span className={spotlight ? "leaderboard-rank podium" : "leaderboard-rank"}>
-        {player.rank > 0 ? `#${player.rank}` : "—"}
+        {player.rank > 0 ? `#${player.rank}` : "-"}
       </span>
       <span className="leaderboard-avatar">
         {player.card ? <img src={player.card} alt="" loading="lazy" /> : <Users size={15} />}
@@ -140,7 +140,7 @@ export default function Leaderboard() {
           )}
         </form>
         <span className="leaderboard-count">
-          {data ? `${data.players.length} of ${data.totalPlayers.toLocaleString()} players` : "—"}
+          {data ? `${data.players.length} of ${data.totalPlayers.toLocaleString()} players` : "-"}
         </span>
       </section>
 

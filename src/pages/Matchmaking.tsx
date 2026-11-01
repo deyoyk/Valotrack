@@ -135,9 +135,9 @@ export default function Matchmaking() {
       .catch(() => void 0);
   }, [loadAgents]);
 
-  usePoll(loadQueue, 5000);
-  usePoll(loadStatus, 2000);
-  usePoll(loadParty, 5000);
+  usePoll(loadQueue, 8000);
+  usePoll(loadStatus, 3000);
+  usePoll(loadParty, 8000);
 
   const eligible = useMemo(() => {
     const valid = new Set((queue?.eligible ?? []).map((item) => item.id));

@@ -112,12 +112,16 @@ impl AppState {
         })
     }
 
-    pub fn cache_json(&self, key: &str) -> Option<serde_json::Value> {
+    pub fn cache_json_for(&self, key: &str, ttl: Duration) -> Option<serde_json::Value> {
         let cache = self.json_cache.lock();
         cache
             .get(key)
-            .filter(|(at, _)| at.elapsed() < Duration::from_secs(60))
+            .filter(|(at, _)| at.elapsed() < ttl)
             .map(|(_, value)| value.clone())
+    }
+
+    pub fn cache_json(&self, key: &str) -> Option<serde_json::Value> {
+        self.cache_json_for(key, Duration::from_secs(60))
     }
 
     pub fn put_json(&self, key: String, value: serde_json::Value) {

@@ -43,10 +43,47 @@ function desktop() {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+function developmentBuild() {
+  return typeof window !== "undefined" && window.location.port === "1420";
+}
+
 export function UpdaterProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<UpdateState>({ status: "idle" });
   const found = useRef<Update | null>(null);
   const busy = useRef(false);
+  const installing = useRef(false);
+
+  const installUpdate = useCallback(async (update: Update, auto: boolean) => {
+    if (installing.current) return;
+    installing.current = true;
+    setState({ status: "downloading", version: update.version, progress: 0 });
+    try {
+      let total = 0;
+      let received = 0;
+      await update.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          total = event.data.contentLength ?? 0;
+          setState((previous) => ({ ...previous, progress: 0 }));
+        } else if (event.event === "Progress") {
+          received += event.data.chunkLength;
+          setState((previous) => ({
+            ...previous,
+            progress: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : 0,
+          }));
+        } else {
+          setState((previous) => ({ ...previous, progress: 100 }));
+        }
+      });
+      setState({ status: "ready", version: update.version, progress: 100 });
+      if (auto) {
+        await relaunch();
+      }
+    } catch (cause) {
+      setState({ status: "error", error: message(cause), version: update.version });
+    } finally {
+      installing.current = false;
+    }
+  }, []);
 
   const checkNow = useCallback(async (silent = false) => {
     if (busy.current) return;
@@ -79,13 +116,24 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!desktop()) return;
-    const first = window.setTimeout(() => void checkNow(true), 5000);
+    let cancelled = false;
+    const startup = window.setTimeout(async () => {
+      if (cancelled) return;
+      await checkNow(true);
+      if (cancelled) return;
+      const update = found.current;
+      // Dev builds should never install the public release over the working tree.
+      if (update && !developmentBuild()) {
+        await installUpdate(update, true);
+      }
+    }, 1500);
     const timer = window.setInterval(() => void checkNow(true), 6 * 60 * 60 * 1000);
     return () => {
-      window.clearTimeout(first);
+      cancelled = true;
+      window.clearTimeout(startup);
       window.clearInterval(timer);
     };
-  }, [checkNow]);
+  }, [checkNow, installUpdate]);
 
   const install = useCallback(async () => {
     const update = found.current;
@@ -93,29 +141,8 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
       await checkNow();
       return;
     }
-    setState({ status: "downloading", version: update.version, progress: 0 });
-    try {
-      let total = 0;
-      let received = 0;
-      await update.downloadAndInstall((event) => {
-        if (event.event === "Started") {
-          total = event.data.contentLength ?? 0;
-          setState((previous) => ({ ...previous, progress: 0 }));
-        } else if (event.event === "Progress") {
-          received += event.data.chunkLength;
-          setState((previous) => ({
-            ...previous,
-            progress: total > 0 ? Math.min(99, Math.round((received / total) * 100)) : 0,
-          }));
-        } else {
-          setState((previous) => ({ ...previous, progress: 100 }));
-        }
-      });
-      setState({ status: "ready", version: update.version, progress: 100 });
-    } catch (cause) {
-      setState({ status: "error", error: message(cause) });
-    }
-  }, [checkNow]);
+    await installUpdate(update, false);
+  }, [checkNow, installUpdate]);
 
   const restart = useCallback(async () => {
     await relaunch();

@@ -110,7 +110,7 @@ export function ProfileModal({
               <span>headshots</span>
             </div>
             <div>
-              <strong>{player.peakRankTier > 0 ? player.peakRank : "—"}</strong>
+              <strong>{player.peakRankTier > 0 ? player.peakRank : "-"}</strong>
               <span>peak</span>
             </div>
           </div>

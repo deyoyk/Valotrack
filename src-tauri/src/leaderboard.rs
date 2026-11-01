@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -32,6 +33,13 @@ pub async fn snapshot(
             session.region.shard
         )
     };
+    let cache_key = format!(
+        "leaderboard:{}:{}:{}:{}",
+        session.region.shard, season, size, query
+    );
+    if let Some(cached) = state.cache_json_for(&cache_key, Duration::from_secs(45)) {
+        return Ok(cached);
+    }
     let data = session
         .pd_get(&path)
         .await
@@ -82,7 +90,7 @@ pub async fn snapshot(
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    Ok(json!({
+    let value = json!({
         "available": true,
         "season": season,
         "seasonLabel": state.valo.season_label(&season).await,
@@ -92,5 +100,7 @@ pub async fn snapshot(
         "totalPlayers": data.get("totalPlayers").and_then(Value::as_i64).unwrap_or(0),
         "tierDetails": data.get("tierDetails").cloned().unwrap_or(Value::Null),
         "players": players
-    }))
+    });
+    state.put_json(cache_key, value.clone());
+    Ok(value)
 }

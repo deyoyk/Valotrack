@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -18,6 +19,10 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         .session(&settings.region)
         .await
         .map_err(|error| error.to_string())?;
+    let cache_key = format!("account:overview:{}", session.puuid);
+    if let Some(cached) = state.cache_json_for(&cache_key, Duration::from_secs(120)) {
+        return Ok(cached);
+    }
     let alias = session
         .local_get("/player-account/aliases/v1/active")
         .await
@@ -104,7 +109,7 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         })
         .unwrap_or_default();
 
-    Ok(json!({
+    let value = json!({
         "available": true,
         "identity": {
             "gameName": alias.get("game_name").cloned().unwrap_or_else(|| account.get("game_name").cloned().unwrap_or(Value::Null)),
@@ -137,5 +142,7 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         "region": session.region.shard,
         "clientVersion": session.client_version,
         "accountLabel": content::account_label(&session).await
-    }))
+    });
+    state.put_json(cache_key, value.clone());
+    Ok(value)
 }

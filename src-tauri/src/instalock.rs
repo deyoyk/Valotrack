@@ -64,7 +64,7 @@ impl InstalockState {
         status["mode"] = json!(mode);
         status["side"] = Value::Null;
         status["map"] = Value::Null;
-        status["message"] = json!("Armed — waiting for agent select…");
+        status["message"] = json!("Armed - waiting for agent select…");
         drop(status);
         let worker = self.clone();
         let handle = tauri::async_runtime::spawn(loop_pick(
@@ -176,7 +176,7 @@ async fn loop_pick(
                         choice.name
                     )
                 } else {
-                    format!("Riot refused {} — pick manually.", choice.name)
+                    format!("Riot refused {} - pick manually.", choice.name)
                 });
                 return;
             }

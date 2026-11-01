@@ -6,9 +6,9 @@ A fast, local VALORANT companion for Windows. Live lobby intel, match history, r
 
 [![Download the latest release](https://img.shields.io/github/v/release/deyoyk/Valotrack?label=download&style=for-the-badge)](https://github.com/deyoyk/Valotrack/releases/latest)
 
-- [Windows installer — latest](https://github.com/deyoyk/Valotrack/releases/latest/download/Valotrack_x64-setup.exe)
-- [Release notes — latest](https://github.com/deyoyk/Valotrack/releases/latest)
-- [Updater manifest — latest.json](https://github.com/deyoyk/Valotrack/releases/latest/download/latest.json)
+- [Windows installer - latest](https://github.com/deyoyk/Valotrack/releases/latest/download/Valotrack_x64-setup.exe)
+- [Release notes - latest](https://github.com/deyoyk/Valotrack/releases/latest)
+- [Updater manifest - latest.json](https://github.com/deyoyk/Valotrack/releases/latest/download/latest.json)
 
 ## What's inside
 

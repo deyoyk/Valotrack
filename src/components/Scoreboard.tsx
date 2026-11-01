@@ -35,7 +35,7 @@ function TeamHeader({
       </div>
       <div className="team-metrics">
         {score !== null && score !== undefined && <span className="team-score">{score}</span>}
-        <Stat label="Avg rank" value={stats?.avgRank ?? "—"} />
+        <Stat label="Avg rank" value={stats?.avgRank ?? "-"} />
         <Stat label="K/D" value={num(stats?.avgKd)} />
         <Stat label="Win rate" value={pct(stats?.avgWinRate)} />
         {!!stats?.smurfCount && (

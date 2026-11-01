@@ -238,7 +238,7 @@ function render(b){
   if(b.score)html+='<div class="score"><div>'+(b.score.ally||0)+'<span>YOU</span></div><div>'+(b.score.enemy||0)+'<span>ENEMY</span></div></div>';
   html+='</div>';
   Object.keys(teams).forEach(tm=>{if(!teams[tm].length)return;html+='<div class="card team"><div class="teamhead"><span>'+(tm===b.selfTeam?'Your team':'Enemy team')+'</span><span>'+(b.teamStats?.[tm]?.avgRank||'')+'</span></div>';
-   teams[tm].forEach(p=>{html+='<div class="row '+(p.isSelf?'self':'')+'">'+(p.agentPortrait?'<img class="agent" src="'+p.agentPortrait+'">':'<span></span>')+'<div class="name">'+esc(p.name)+(p.smurf?'<span class="smurf">SMURF</span>':'')+'</div><div class="rank" style="color:'+(p.rankColor||'#8b93a1')+'">'+(p.rank||'Unrated')+'</div><div class="kd">'+(p.kd??'—')+'</div></div>'});
+   teams[tm].forEach(p=>{html+='<div class="row '+(p.isSelf?'self':'')+'">'+(p.agentPortrait?'<img class="agent" src="'+p.agentPortrait+'">':'<span></span>')+'<div class="name">'+esc(p.name)+(p.smurf?'<span class="smurf">SMURF</span>':'')+'</div><div class="rank" style="color:'+(p.rankColor||'#8b93a1')+'">'+(p.rank||'Unrated')+'</div><div class="kd">'+(p.kd??'-')+'</div></div>'});
    html+='</div>'});
  }
  document.getElementById('app').innerHTML=html;

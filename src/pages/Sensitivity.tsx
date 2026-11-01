@@ -83,7 +83,7 @@ export default function Sensitivity() {
       [700, 10000],
     ];
     return ranges.map(([min, max]) => ({
-      label: max === 10000 ? `${min}+` : `${min}–${max}`,
+      label: max === 10000 ? `${min}+` : `${min}-${max}`,
       count: PROS.filter((pro) => pro.edpi >= min && pro.edpi < max).length,
       active: edpi >= min && edpi < max,
     }));
@@ -159,7 +159,7 @@ export default function Sensitivity() {
             </div>
             <div>
               <span>cm / 360°</span>
-              <strong>{physical > 0 ? physical.toFixed(1) : "—"}</strong>
+              <strong>{physical > 0 ? physical.toFixed(1) : "-"}</strong>
             </div>
           </div>
           <div className="distribution">

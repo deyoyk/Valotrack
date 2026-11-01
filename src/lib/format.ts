@@ -3,11 +3,11 @@ export function cn(...classes: (string | false | null | undefined)[]) {
 }
 
 export function pct(value: number | null | undefined) {
-  return value === null || value === undefined ? "—" : `${Math.round(value)}%`;
+  return value === null || value === undefined ? "-" : `${Math.round(value)}%`;
 }
 
 export function num(value: number | null | undefined, digits = 2) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "—";
+  if (value === null || value === undefined || Number.isNaN(value)) return "-";
   return value.toFixed(digits);
 }
 
@@ -25,7 +25,7 @@ export function timeAgo(timestamp: number) {
 }
 
 export function formatDate(timestamp: number | null | undefined) {
-  if (!timestamp) return "—";
+  if (!timestamp) return "-";
   return new Date(timestamp * 1000).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -33,7 +33,7 @@ export function formatDate(timestamp: number | null | undefined) {
 }
 
 export function formatDateTime(timestamp: number | null | undefined) {
-  if (!timestamp) return "—";
+  if (!timestamp) return "-";
   return new Date(timestamp * 1000).toLocaleString(undefined, {
     month: "short",
     day: "numeric",

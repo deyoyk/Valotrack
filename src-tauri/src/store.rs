@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use serde_json::{json, Value};
 
@@ -97,7 +97,7 @@ pub async fn snapshot(state: &Arc<AppState>, refresh: bool) -> Result<Value, Str
         .map_err(|error| error.to_string())?;
     let cache_key = format!("store:{}", session.puuid);
     if !refresh {
-        if let Some(cached) = state.cache_json(&cache_key) {
+        if let Some(cached) = state.cache_json_for(&cache_key, Duration::from_secs(300)) {
             return Ok(cached);
         }
     }

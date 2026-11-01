@@ -3,11 +3,13 @@ use std::{collections::HashMap, sync::Arc, time::Instant};
 use futures::{stream, StreamExt};
 use serde_json::{json, Value};
 
+use std::time::Duration;
+
 use crate::{app::AppState, catalog, riot::Session};
 
 pub async fn profile(state: &Arc<AppState>, puuid: &str) -> Result<Value, String> {
     let key = format!("career:{puuid}");
-    if let Some(cached) = state.cache_json(&key) {
+    if let Some(cached) = state.cache_json_for(&key, Duration::from_secs(300)) {
         return Ok(cached);
     }
     let settings = state.settings_snapshot();

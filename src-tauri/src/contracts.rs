@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 
 use serde_json::{json, Value};
 
@@ -34,6 +35,10 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         .session(&settings.region)
         .await
         .map_err(|error| error.to_string())?;
+    let cache_key = format!("contracts:{}", session.puuid);
+    if let Some(cached) = state.cache_json_for(&cache_key, Duration::from_secs(120)) {
+        return Ok(cached);
+    }
     let data = session
         .pd_get(&format!("/contracts/v1/contracts/{}", session.puuid))
         .await
@@ -225,7 +230,7 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         })
         .unwrap_or_default();
 
-    Ok(json!({
+    let value = json!({
         "available": true,
         "account": account,
         "activeContract": active,
@@ -239,7 +244,9 @@ pub async fn snapshot(state: &Arc<AppState>) -> Result<Value, String> {
         "recent": recent,
         "upgradeable": upgradeable,
         "upgradeCount": upgrades.as_array().map(Vec::len).unwrap_or(0)
-    }))
+    });
+    state.put_json(cache_key, value.clone());
+    Ok(value)
 }
 
 pub async fn activate(
@@ -276,6 +283,10 @@ pub async fn activate(
         )
         .await
         .map_err(|error| format!("Couldn't activate the contract: {error}"))?;
+    state
+        .json_cache
+        .lock()
+        .remove(&format!("contracts:{}", session.puuid));
     Ok(json!({
         "ok": true,
         "status": "active",

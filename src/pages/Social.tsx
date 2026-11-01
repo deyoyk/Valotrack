@@ -65,7 +65,7 @@ export default function Social() {
     }
   }, []);
 
-  usePoll(load, 8000);
+  usePoll(load, 15000);
 
   useEffect(() => {
     void load();
@@ -86,7 +86,9 @@ export default function Social() {
       return;
     }
     void loadMessages(selected.cid);
-    const timer = window.setInterval(() => void loadMessages(selected.cid), 5000);
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void loadMessages(selected.cid);
+    }, 10000);
     return () => window.clearInterval(timer);
   }, [selected, loadMessages]);
 

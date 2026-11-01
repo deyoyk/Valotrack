@@ -39,7 +39,7 @@ pub async fn queue_action(
     if snapshot.get("available").and_then(Value::as_bool) != Some(true) {
         return json!({
             "ok": false,
-            "message": "Not in a party — get to the VALORANT lobby first."
+            "message": "Not in a party - get to the VALORANT lobby first."
         });
     }
     let party_id = snapshot

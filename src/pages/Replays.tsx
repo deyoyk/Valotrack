@@ -169,7 +169,7 @@ function parseError(cause: unknown) {
 
 function statText(player: ReplayPlayer, key: string) {
   const value = player.stats?.[key];
-  return typeof value === "number" || typeof value === "string" ? value : "—";
+  return typeof value === "number" || typeof value === "string" ? value : "-";
 }
 
 export default function Replays() {
@@ -526,7 +526,7 @@ export default function Replays() {
                   {!meta && (
                     <div className="replay-no-map">
                       <AlertTriangle size={18} />
-                      <span>Map not recognised — positions use world coordinates only.</span>
+                      <span>Map not recognised - positions use world coordinates only.</span>
                     </div>
                   )}
                   <div className="replay-map-overlay">

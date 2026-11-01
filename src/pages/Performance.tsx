@@ -286,7 +286,7 @@ export default function Performance() {
           <div className="perf-stat">
             <span>Streak</span>
             <strong className={summary.streak?.type === "Victory" ? "pos" : summary.streak ? "neg" : ""}>
-              {summary.streak ? `${summary.streak.count}${summary.streak.type === "Victory" ? "W" : "L"}` : "—"}
+              {summary.streak ? `${summary.streak.count}${summary.streak.type === "Victory" ? "W" : "L"}` : "-"}
             </strong>
             <em>{summary.streak?.type === "Victory" ? "winning run" : summary.streak ? "losing run" : "no streak"}</em>
           </div>

@@ -60,9 +60,9 @@ function TeamBlock({
           <span className="tnum strong">{player.acs}</span>
           <span className="tnum">{pct(player.hsPct)}</span>
           <span className="tnum">{num(player.adr, 0)}</span>
-          <span className="tnum">{player.firstBloods ?? "—"}</span>
-          <span className="tnum">{player.multiKills ?? "—"}</span>
-          <span className="tnum">{player.aces ?? "—"}</span>
+          <span className="tnum">{player.firstBloods ?? "-"}</span>
+          <span className="tnum">{player.multiKills ?? "-"}</span>
+          <span className="tnum">{player.aces ?? "-"}</span>
         </div>
       ))}
     </div>

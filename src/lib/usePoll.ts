@@ -18,14 +18,23 @@ export function usePoll(callback: () => void | Promise<void>, ms: number, active
     let timer: number | undefined;
 
     async function tick() {
+      if (stopped || document.hidden) return;
       await run();
       if (!stopped) timer = window.setTimeout(tick, ms);
     }
 
+    function onVisibility() {
+      if (document.hidden || stopped) return;
+      if (timer) window.clearTimeout(timer);
+      void tick();
+    }
+
     timer = window.setTimeout(tick, ms);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       stopped = true;
       if (timer) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [active, ms, run]);
 

@@ -237,11 +237,41 @@ impl Session {
 
     pub async fn presences(&self) -> Result<Vec<Value>, RiotError> {
         let data = self.local_get("/chat/v4/presences").await?;
-        Ok(data
+        let mut presences = data
             .get("presences")
             .and_then(Value::as_array)
             .cloned()
-            .unwrap_or_default())
+            .unwrap_or_default();
+        if let Some(private) = crate::offline::captured_private() {
+            if let Ok(raw) = serde_json::to_vec(&private) {
+                let encoded = B64.encode(raw);
+                let mut replaced = false;
+                for presence in &mut presences {
+                    if presence.get("puuid").and_then(Value::as_str)
+                        != Some(self.puuid.as_str())
+                    {
+                        continue;
+                    }
+                    if let Value::Object(map) = presence {
+                        map.insert("product".into(), json!("valorant"));
+                        map.insert("private".into(), json!(encoded));
+                        replaced = true;
+                    }
+                    break;
+                }
+                if !replaced {
+                    presences.insert(
+                        0,
+                        json!({
+                            "puuid": self.puuid,
+                            "product": "valorant",
+                            "private": encoded
+                        }),
+                    );
+                }
+            }
+        }
+        Ok(presences)
     }
 
     pub fn game_state(&self, presences: &[Value]) -> String {

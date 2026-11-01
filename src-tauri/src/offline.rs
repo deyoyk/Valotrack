@@ -5,6 +5,7 @@ use std::{
     time::Duration,
 };
 
+use base64::Engine;
 use axum::{
     body::Body,
     extract::{OriginalUri, State},
@@ -44,6 +45,42 @@ static STATUS: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"(?s)<status>.*?</status>").expect("status regex"));
 static STATUS_EMPTY: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"<status\s*/>").expect("status empty regex"));
+static CAPTURED: LazyLock<Mutex<Option<(Value, std::time::Instant)>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+pub fn captured_private() -> Option<Value> {
+    let mut captured = CAPTURED.lock();
+    if let Some((value, at)) = captured.as_ref() {
+        if at.elapsed() < Duration::from_secs(120) {
+            return Some(value.clone());
+        }
+    }
+    *captured = None;
+    None
+}
+
+fn capture_presence(stanza: &str) {
+    let Some(start) = stanza.find("<valorant") else {
+        return;
+    };
+    let Some(p_start) = stanza[start..].find("<p>") else {
+        return;
+    };
+    let content_start = start + p_start + 3;
+    let Some(p_end) = stanza[content_start..].find("</p>") else {
+        return;
+    };
+    let encoded = &stanza[content_start..content_start + p_end];
+    let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(encoded.trim()) else {
+        return;
+    };
+    let Ok(value) = serde_json::from_slice::<Value>(&bytes) else {
+        return;
+    };
+    if value.is_object() {
+        *CAPTURED.lock() = Some((value, std::time::Instant::now()));
+    }
+}
 
 #[derive(Clone)]
 struct Target {
@@ -121,6 +158,7 @@ impl OfflineEngine {
         if *self.running.lock() {
             return Ok(());
         }
+        *CAPTURED.lock() = None;
         let pfx = self.certificate().await?;
         let identity = native_tls::Identity::from_pkcs12(&pfx, "")
             .or_else(|_| native_tls::Identity::from_pkcs12(&pfx, "deceive"))
@@ -475,6 +513,7 @@ fn process_presences(
         let open_end = stanza.find('>').unwrap_or(stanza.len());
         let directed = stanza[..open_end].contains(" to=");
         if !directed {
+            capture_presence(stanza);
             last = Some(stanza.to_string());
             if status == "online" {
                 out.push_str(stanza);
@@ -628,5 +667,32 @@ mod tests {
         let (out, _, last) = process_presences(stanza, "offline");
         assert_eq!(out, stanza);
         assert!(last.is_none());
+    }
+}
+
+#[cfg(test)]
+mod capture_tests {
+    use super::*;
+    use base64::Engine;
+
+    #[test]
+    fn captures_valorant_private_presence() {
+        let payload = json!({
+            "matchPresenceData": {
+                "sessionLoopState": "INGAME"
+            },
+            "partyPresenceData": {
+                "partyId": "abc"
+            }
+        });
+        let encoded = base64::engine::general_purpose::STANDARD
+            .encode(serde_json::to_vec(&payload).unwrap());
+        let stanza = format!(
+            "<presence from='self'><games><valorant><p>{encoded}</p></valorant></games></presence>"
+        );
+        capture_presence(&stanza);
+        let captured = captured_private().unwrap();
+        assert_eq!(captured["matchPresenceData"]["sessionLoopState"], "INGAME");
+        assert_eq!(captured["partyPresenceData"]["partyId"], "abc");
     }
 }

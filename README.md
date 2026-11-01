@@ -14,3 +14,6 @@ npm run tauri dev
 Build an installer with `npm run tauri build`.
 
 Requires Windows 10/11, WebView2, Rust and Node.js. VALORANT must be running for live features.
+
+Community crosshair, lineup, callout, sensitivity and ASCII data plus the .vrf parser come from the open-source Valorant Scout project. Licensed GPL-3.0.
+

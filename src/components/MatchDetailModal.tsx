@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2, Swords } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Save, Swords } from "lucide-react";
 import { api, MatchDetail, MatchPlayer } from "../lib/api";
 import { cn, num, pct } from "../lib/format";
 import { Modal } from "./Modal";
@@ -82,6 +82,19 @@ export function MatchDetailModal({
 }) {
   const [detail, setDetail] = useState<MatchDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [tags, setTags] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    api
+      .matchNote(matchId)
+      .then((value) => {
+        setNote(value.note ?? "");
+        setTags((value.tags ?? []).join(", "));
+      })
+      .catch(() => void 0);
+  }, [matchId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,6 +191,48 @@ export function MatchDetailModal({
               highlight={team === selfTeam}
             />
           ))}
+          <div className="match-note">
+            <div className="match-note-head">
+              <span className="panel-label">Match note</span>
+              {saved && (
+                <span className="saved-note">
+                  <Check size={11} /> saved
+                </span>
+              )}
+            </div>
+            <textarea
+              value={note}
+              onChange={(event) => {
+                setNote(event.target.value);
+                setSaved(false);
+              }}
+              placeholder="What worked? What went wrong? What do you want to remember next time?"
+              rows={3}
+            />
+            <div className="match-note-foot">
+              <input
+                value={tags}
+                onChange={(event) => {
+                  setTags(event.target.value);
+                  setSaved(false);
+                }}
+                placeholder="tags: clutch, retake, aim"
+              />
+              <button
+                className="button small"
+                onClick={async () => {
+                  await api.matchNoteUpdate(
+                    matchId,
+                    note,
+                    tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+                  );
+                  setSaved(true);
+                }}
+              >
+                <Save size={12} /> Save note
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </Modal>

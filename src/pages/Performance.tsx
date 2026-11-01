@@ -6,15 +6,20 @@ import {
   ArrowUpRight,
   BarChart3,
   CalendarDays,
+  Flag,
   Flame,
   Loader2,
+  Play,
   RefreshCw,
   ShieldCheck,
+  Square,
   Target,
+  Trash2,
   Trophy,
 } from "lucide-react";
 import { api, type Performance as PerformanceData } from "../lib/api";
 import { cn, formatDate, formatDateTime, num, pct } from "../lib/format";
+import { Modal } from "../components/Modal";
 
 function TrendChart({ points }: { points: PerformanceData["points"] }) {
   const rows = useMemo(() => points.slice(-80), [points]);
@@ -105,6 +110,10 @@ export default function Performance() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [startOpen, setStartOpen] = useState(false);
+  const [goalType, setGoalType] = useState("games");
+  const [goalTarget, setGoalTarget] = useState(5);
+  const [sessionBusy, setSessionBusy] = useState(false);
 
   async function load(quiet = false) {
     if (!quiet) setRefreshing(true);
@@ -138,6 +147,29 @@ export default function Performance() {
   const summary = data?.summary;
   const tilt = summary?.tilt;
   const hasGames = (summary?.games ?? 0) > 0;
+  const manual = data?.manualSessions;
+  const activeSession = manual?.active ?? null;
+
+  async function startSession() {
+    setSessionBusy(true);
+    try {
+      await api.sessionStart(goalType, goalTarget);
+      setStartOpen(false);
+      await load(true);
+    } finally {
+      setSessionBusy(false);
+    }
+  }
+
+  async function endSession() {
+    setSessionBusy(true);
+    try {
+      await api.sessionEnd();
+      await load(true);
+    } finally {
+      setSessionBusy(false);
+    }
+  }
 
   return (
     <div className="page performance-page">
@@ -180,6 +212,54 @@ export default function Performance() {
           </div>
         </div>
       )}
+
+      <section className={cn("session-banner", activeSession && "active")}>
+        {activeSession ? (
+          <>
+            <div className="session-banner-icon">
+              <Flag size={18} />
+            </div>
+            <div className="session-banner-main">
+              <span className="profile-kicker">session in progress</span>
+              <h2>
+                {activeSession.current} / {activeSession.target}{" "}
+                {activeSession.goalType === "wins"
+                  ? "wins"
+                  : activeSession.goalType === "rr"
+                    ? "RR"
+                    : "games"}
+              </h2>
+              <div className="session-progress">
+                <i style={{ width: `${activeSession.progress}%` }} />
+              </div>
+              <p>
+                {activeSession.games} games · {activeSession.wins}W {activeSession.losses}L ·{" "}
+                <span className={activeSession.netRr >= 0 ? "pos" : "neg"}>
+                  {activeSession.netRr > 0 ? "+" : ""}
+                  {activeSession.netRr} RR
+                </span>
+              </p>
+            </div>
+            <button className="button small danger" onClick={endSession} disabled={sessionBusy}>
+              <Square size={12} /> End session
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="session-banner-icon">
+              <Flag size={18} />
+            </div>
+            <div className="session-banner-main">
+              <span className="profile-kicker">session tracker</span>
+              <h2>Set a target before you queue.</h2>
+              <p>Track wins, games or RR this session and see the progress live.</p>
+            </div>
+            <button className="button small primary" onClick={() => setStartOpen(true)}>
+              <Play size={12} /> Start session
+            </button>
+          </>
+        )}
+      </section>
 
       {summary && (
         <div className="perf-stat-row">
@@ -318,6 +398,40 @@ export default function Performance() {
               <span>Sessions group automatically when you play.</span>
             </div>
           )}
+          {manual?.sessions.length ? (
+            <div className="manual-sessions">
+              <span className="panel-label">Tracked sessions</span>
+              {manual.sessions.slice(0, 6).map((session) => (
+                <div className="manual-session-row" key={session.id}>
+                  <span>
+                    <strong>
+                      {session.current}/{session.target}{" "}
+                      {session.goalType === "wins"
+                        ? "wins"
+                        : session.goalType === "rr"
+                          ? "RR"
+                          : "games"}
+                    </strong>
+                    <em>{formatDate(session.startedAt)}</em>
+                  </span>
+                  <span className={session.netRr >= 0 ? "pos" : "neg"}>
+                    {session.netRr > 0 ? "+" : ""}
+                    {session.netRr} RR
+                  </span>
+                  <button
+                    className="icon-button"
+                    onClick={async () => {
+                      await api.sessionDelete(session.id);
+                      await load(true);
+                    }}
+                    aria-label="Delete session"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <section className="panel recent-panel">
@@ -359,6 +473,46 @@ export default function Performance() {
           )}
         </section>
       </div>
+
+      {startOpen && (
+        <Modal onClose={() => setStartOpen(false)} label="Start session" className="session-modal">
+          <div className="builder-head">
+            <div>
+              <span className="profile-kicker">Session tracker</span>
+              <h2>Set the target</h2>
+            </div>
+          </div>
+          <div className="session-form">
+            <label className="field">
+              <span>Goal</span>
+              <select value={goalType} onChange={(event) => setGoalType(event.target.value)}>
+                <option value="games">Play games</option>
+                <option value="wins">Win games</option>
+                <option value="rr">Earn RR</option>
+              </select>
+            </label>
+            <label className="field">
+              <span>Target</span>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={goalTarget}
+                onChange={(event) => setGoalTarget(Number(event.target.value))}
+              />
+            </label>
+            <div className="builder-actions">
+              <button className="button" onClick={() => setStartOpen(false)}>
+                Cancel
+              </button>
+              <button className="button primary" onClick={startSession} disabled={sessionBusy}>
+                {sessionBusy ? <Loader2 size={13} className="spin" /> : <Play size={13} />}
+                Start tracking
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

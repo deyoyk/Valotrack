@@ -369,6 +369,8 @@ export type Performance = {
   rankTier: number;
   rr: number;
   currentAccountPuuid?: string | null;
+  manualSessions?: SessionList;
+  matchMeta?: Record<string, MatchNote>;
 };
 
 export type Inventory = {
@@ -386,6 +388,36 @@ export type EncounterList = {
   players: EncounterPlayer[];
   accountCount: number;
   scope: string;
+};
+
+export type SessionView = {
+  id: string;
+  goalType: "wins" | "games" | "rr";
+  target: number;
+  startedAt: number;
+  endedAt: number | null;
+  active: boolean;
+  games: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  netRr: number;
+  current: number;
+  progress: number;
+  complete: boolean;
+};
+
+export type SessionList = {
+  owner: string;
+  active: SessionView | null;
+  sessions: SessionView[];
+};
+
+export type MatchNote = {
+  matchId: string;
+  note: string;
+  tags: string[];
+  updatedAt?: number;
 };
 
 export type OfflineStatus = {
@@ -441,4 +473,12 @@ export const api = {
       "offline_set_enabled",
       { enabled },
     ),
+  sessions: () => invoke<SessionList>("sessions_list"),
+  sessionStart: (goalType: string, target: number) =>
+    invoke<{ ok: boolean; session: SessionView }>("session_start", { goalType, target }),
+  sessionEnd: () => invoke<{ ok: boolean; session: SessionView }>("session_end"),
+  sessionDelete: (id: string) => invoke<{ ok: boolean }>("session_delete", { id }),
+  matchNote: (matchId: string) => invoke<MatchNote>("match_note", { matchId }),
+  matchNoteUpdate: (matchId: string, note: string, tags: string[]) =>
+    invoke<MatchNote>("match_note_update", { matchId, note, tags }),
 };

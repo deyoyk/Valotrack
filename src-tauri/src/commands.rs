@@ -167,7 +167,54 @@ pub async fn performance(state: State<'_, Arc<AppState>>) -> Result<serde_json::
     let mut payload = crate::history::payload(state.inner(), owner.as_deref());
     payload["currentAccountPuuid"] = serde_json::json!(owner);
     payload["isCurrentAccount"] = serde_json::json!(owner.is_some());
+    payload["manualSessions"] = crate::sessions::list(state.inner());
+    payload["matchMeta"] = crate::match_notes::all(state.inner());
     Ok(payload)
+}
+
+#[tauri::command]
+pub fn sessions_list(state: State<'_, Arc<AppState>>) -> serde_json::Value {
+    crate::sessions::list(state.inner())
+}
+
+#[tauri::command]
+pub fn session_start(
+    state: State<'_, Arc<AppState>>,
+    goal_type: Option<String>,
+    target: Option<i64>,
+) -> Result<serde_json::Value, String> {
+    crate::sessions::start(state.inner(), goal_type.as_deref(), target)
+}
+
+#[tauri::command]
+pub fn session_end(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
+    crate::sessions::end(state.inner())
+}
+
+#[tauri::command]
+pub fn session_delete(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<serde_json::Value, String> {
+    crate::sessions::delete(state.inner(), &id)
+}
+
+#[tauri::command]
+pub fn match_note(
+    state: State<'_, Arc<AppState>>,
+    match_id: String,
+) -> serde_json::Value {
+    crate::match_notes::get(state.inner(), &match_id)
+}
+
+#[tauri::command]
+pub fn match_note_update(
+    state: State<'_, Arc<AppState>>,
+    match_id: String,
+    note: String,
+    tags: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    crate::match_notes::update(state.inner(), &match_id, &note, tags)
 }
 
 #[tauri::command]

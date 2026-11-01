@@ -11,8 +11,10 @@ mod history;
 mod instalock;
 mod inventory;
 mod live;
+mod match_notes;
 mod offline;
 mod riot;
+mod sessions;
 mod valo;
 
 use std::sync::Arc;
@@ -56,6 +58,12 @@ pub fn run() {
             commands::offline_launch,
             commands::offline_set_status,
             commands::offline_set_enabled,
+            commands::sessions_list,
+            commands::session_start,
+            commands::session_end,
+            commands::session_delete,
+            commands::match_note,
+            commands::match_note_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Valotrack");

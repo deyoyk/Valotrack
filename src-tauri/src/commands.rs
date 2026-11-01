@@ -251,16 +251,24 @@ pub async fn inventory(state: State<'_, Arc<AppState>>) -> Result<serde_json::Va
 }
 
 #[tauri::command]
-pub fn offline_status(state: State<'_, Arc<AppState>>) -> serde_json::Value {
-    state.offline.status()
+pub async fn offline_status(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    Ok(state.offline.status().await)
 }
 
 #[tauri::command]
 pub async fn offline_start(
     state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {
-    state.offline.start().await?;
-    Ok(state.offline.status())
+    state.offline.start().await
+}
+
+#[tauri::command]
+pub async fn offline_stop(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    state.offline.stop().await
 }
 
 #[tauri::command]
@@ -272,17 +280,17 @@ pub async fn offline_launch(
 }
 
 #[tauri::command]
-pub fn offline_set_status(
+pub async fn offline_set_status(
     state: State<'_, Arc<AppState>>,
     status: String,
 ) -> Result<serde_json::Value, String> {
-    state.offline.set_status(&status)
+    state.offline.set_status(&status).await
 }
 
 #[tauri::command]
-pub fn offline_set_enabled(
+pub async fn offline_set_enabled(
     state: State<'_, Arc<AppState>>,
     enabled: bool,
 ) -> Result<serde_json::Value, String> {
-    state.offline.set_enabled(enabled)
+    state.offline.set_enabled(enabled).await
 }

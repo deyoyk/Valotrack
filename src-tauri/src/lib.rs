@@ -14,6 +14,7 @@ mod inventory;
 mod live;
 mod match_notes;
 mod offline;
+mod offline_client;
 mod remote;
 mod riot;
 mod sessions;
@@ -26,6 +27,17 @@ use tauri::Manager;
 pub use app::AppState;
 
 pub fn run() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|arg| arg == offline::HELPER_FLAG) {
+        let data_dir = args
+            .iter()
+            .position(|arg| arg == offline::DATA_DIR_FLAG)
+            .and_then(|index| args.get(index + 1))
+            .cloned()
+            .unwrap_or_default();
+        let _ = offline::run_helper(&data_dir);
+        return;
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
@@ -59,6 +71,7 @@ pub fn run() {
             commands::inventory,
             commands::offline_status,
             commands::offline_start,
+            commands::offline_stop,
             commands::offline_launch,
             commands::offline_set_status,
             commands::offline_set_enabled,

@@ -8,6 +8,7 @@ import {
   Radio,
   ShieldCheck,
   Smartphone,
+  Square,
   WifiOff,
   X,
 } from "lucide-react";
@@ -77,6 +78,26 @@ export default function Offline() {
     }
   }
 
+  async function stop() {
+    if (
+      !window.confirm(
+        "Stop the offline relay? Riot chat will disconnect until you launch through it again.",
+      )
+    ) {
+      return;
+    }
+    setBusy("stop");
+    try {
+      const next = await api.offlineStop();
+      setStatus(next);
+      setMessage({ ok: true, text: "Relay stopped." });
+    } catch (cause) {
+      setMessage({ ok: false, text: cause instanceof Error ? cause.message : String(cause) });
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function launch() {
     if (
       !window.confirm(
@@ -110,6 +131,7 @@ export default function Offline() {
           <p>
             Play with the friends list seeing offline, away or mobile. The relay rewrites
             your outgoing presence on this machine — no third-party binary and no account.
+            It keeps running after you close Valotrack.
           </p>
         </div>
         <div className="head-status">
@@ -174,6 +196,12 @@ export default function Offline() {
             >
               {busy === "start" ? <Loader2 size={15} className="spin" /> : <Radio size={15} />}
               Start relay only
+            </button>
+          )}
+          {status?.running && (
+            <button className="button" onClick={stop} disabled={busy !== null}>
+              {busy === "stop" ? <Loader2 size={15} className="spin" /> : <Square size={14} />}
+              Stop relay
             </button>
           )}
           <button
@@ -256,8 +284,19 @@ export default function Offline() {
               <div>
                 <strong>Everything else keeps working</strong>
                 <p>
-                  Friends, messages, queues and matches continue to work normally. Close
-                  the relay from this page to appear online again.
+                  Friends, messages, queues and matches continue to work normally. A pinned
+                  friend named Valotrack Active accepts the commands online, offline, away,
+                  mobile, status and help in chat.
+                </p>
+              </div>
+            </li>
+            <li>
+              <span>4</span>
+              <div>
+                <strong>Close the app, not the relay</strong>
+                <p>
+                  The relay lives in a small background helper, so closing Valotrack does not
+                  change your status. Stop it here when you want to remove it.
                 </p>
               </div>
             </li>

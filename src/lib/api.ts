@@ -471,6 +471,7 @@ export const api = {
   inventory: () => invoke<Inventory>("inventory"),
   offlineStatus: () => invoke<OfflineStatus>("offline_status"),
   offlineStart: () => invoke<OfflineStatus>("offline_start"),
+  offlineStop: () => invoke<OfflineStatus>("offline_stop"),
   offlineLaunch: (status: string) =>
     invoke<{ ok: boolean; status: string; message: string }>("offline_launch", { status }),
   offlineSetStatus: (status: string) =>

@@ -217,8 +217,8 @@ export default function Settings() {
             <RefreshCw size={20} className="panel-icon" />
           </div>
           <p className="panel-copy">
-            Updates are signed and delivered from GitHub releases. Valotrack checks in the
-            background and never installs anything without your click.
+            Updates are signed and delivered from GitHub releases. Production builds
+            install new versions automatically on launch. You can also check manually here.
           </p>
           <div className="update-state">
             <div>

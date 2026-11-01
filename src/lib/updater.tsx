@@ -28,7 +28,7 @@ export type UpdateState = {
 };
 
 type UpdaterApi = UpdateState & {
-  checkNow: (silent?: boolean) => Promise<void>;
+  checkNow: (silent?: boolean) => Promise<boolean | null>;
   install: () => Promise<void>;
   restart: () => Promise<void>;
 };
@@ -85,18 +85,20 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const checkNow = useCallback(async (silent = false) => {
-    if (busy.current) return;
+  const checkNow = useCallback(async (silent = false): Promise<boolean | null> => {
+    if (busy.current) return null;
     if (!desktop()) {
       if (!silent) {
         setState({ status: "error", error: "Updates are available in the desktop app." });
       }
-      return;
+      return null;
     }
     busy.current = true;
     if (!silent) setState({ status: "checking" });
     try {
-      const update = await check({ timeout: 20000 });
+      // GitHub's release redirect can take more than 20 seconds on slow
+      // networks. A short timeout made startup checks fail silently.
+      const update = await check({ timeout: 60_000 });
       found.current = update;
       if (update) {
         setState({
@@ -104,11 +106,13 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
           version: update.version,
           notes: update.body ?? "",
         });
-      } else if (!silent) {
-        setState({ status: "current" });
+        return true;
       }
+      if (!silent) setState({ status: "current" });
+      return false;
     } catch (cause) {
       if (!silent) setState({ status: "error", error: message(cause) });
+      return null;
     } finally {
       busy.current = false;
     }
@@ -117,20 +121,35 @@ export function UpdaterProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!desktop()) return;
     let cancelled = false;
-    const startup = window.setTimeout(async () => {
+    let retryTimer: number | undefined;
+
+    const startup = async (attempt = 0) => {
       if (cancelled) return;
-      await checkNow(true);
+      const result = await checkNow(true);
       if (cancelled) return;
-      const update = found.current;
-      // Dev builds should never install the public release over the working tree.
-      if (update && !developmentBuild()) {
-        await installUpdate(update, true);
+
+      if (result === true) {
+        if (found.current && !developmentBuild()) {
+          await installUpdate(found.current, true);
+        }
+        return;
       }
-    }, 1500);
+
+      // A failed network check must not wait six hours before trying again.
+      if (result === null && attempt < 3) {
+        retryTimer = window.setTimeout(
+          () => void startup(attempt + 1),
+          5_000 * (attempt + 1),
+        );
+      }
+    };
+
+    const startupTimer = window.setTimeout(() => void startup(), 1_500);
     const timer = window.setInterval(() => void checkNow(true), 6 * 60 * 60 * 1000);
     return () => {
       cancelled = true;
-      window.clearTimeout(startup);
+      window.clearTimeout(startupTimer);
+      if (retryTimer) window.clearTimeout(retryTimer);
       window.clearInterval(timer);
     };
   }, [checkNow, installUpdate]);

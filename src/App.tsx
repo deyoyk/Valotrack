@@ -17,7 +17,6 @@ import {
   ShoppingBag,
   Smartphone,
   Swords,
-  Terminal,
   Trophy,
   UserRound,
   Users,
@@ -51,7 +50,6 @@ const Loadout = lazy(() => import("./pages/Loadout"));
 const Contracts = lazy(() => import("./pages/Contracts"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Account = lazy(() => import("./pages/Account"));
-const ApiLab = lazy(() => import("./pages/ApiLab"));
 
 type Page =
   | "live"
@@ -65,7 +63,6 @@ type Page =
   | "contracts"
   | "leaderboard"
   | "account"
-  | "api"
   | "crosshairs"
   | "lineups"
   | "callouts"
@@ -116,7 +113,6 @@ const toolsNav: NavItem[] = [
 
 const systemNav: NavItem[] = [
   { id: "remote", label: "Phone Remote", icon: Smartphone },
-  { id: "api", label: "API Lab", icon: Terminal },
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -181,8 +177,6 @@ function Page({ page }: { page: Page }) {
       return <Leaderboard />;
     case "account":
       return <Account />;
-    case "api":
-      return <ApiLab />;
     case "crosshairs":
       return <Crosshairs />;
     case "lineups":

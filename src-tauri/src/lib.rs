@@ -3,7 +3,6 @@
 
 mod actions;
 mod account;
-mod api_lab;
 mod app;
 mod career;
 mod catalog;
@@ -157,8 +156,6 @@ pub fn run() {
             commands::queue_state,
             commands::agents,
             commands::owned_agents,
-            commands::api_catalog,
-            commands::api_probe,
             commands::settings_get,
             commands::settings_set,
             commands::queue_action,

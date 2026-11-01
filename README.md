@@ -1,6 +1,6 @@
 # Valotrack
 
-A fast, local VALORANT companion for Windows. Live lobby intel, match history, rank trends, collection value, social chat, an API coverage lab, lineups, crosshairs, sensitivity tools and an ASCII studio in one desktop app. No browser, no terminal.
+A fast, local VALORANT companion for Windows. Live lobby intel, match history, rank trends, collection value, social chat, lineups, crosshairs, sensitivity tools and an ASCII studio in one desktop app. No browser, no terminal.
 
 Built with Tauri 2, Rust and React. All game data is read from your own Riot client and stored on your machine.
 
@@ -9,7 +9,6 @@ Built with Tauri 2, Rust and React. All game data is read from your own Riot cli
 - **Play**: live lobby, friends and Riot chat, performance, encounters, collection, matchmaking and appear-offline tools.
 - **Armory**: daily store, loadouts, contracts and owned-item validation.
 - **Intel**: leaderboard and account overview.
-- **API Lab**: coverage for PVP, party, store, pre-game, current-game, contracts, local, local-chat and authentication endpoints. Read-only probes show real responses with tokens redacted; mutations stay on their guarded pages with dry-run.
 - Instalock only offers agents owned by the signed-in account, including per-map overrides.
 
 Riot credentials and cookies are never stored. The app uses the already signed-in local Riot client.

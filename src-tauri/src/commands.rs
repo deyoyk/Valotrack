@@ -48,20 +48,6 @@ pub fn agents() -> serde_json::Value {
 }
 
 #[tauri::command]
-pub async fn api_catalog(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
-    Ok(crate::api_lab::catalog(state.inner()).await)
-}
-
-#[tauri::command]
-pub async fn api_probe(
-    state: State<'_, Arc<AppState>>,
-    id: String,
-    arg: Option<String>,
-) -> Result<serde_json::Value, String> {
-    crate::api_lab::probe(state.inner(), &id, arg.as_deref()).await
-}
-
-#[tauri::command]
 pub async fn owned_agents(
     state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {

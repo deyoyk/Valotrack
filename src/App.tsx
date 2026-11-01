@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { api } from "./lib/api";
 import { cn } from "./lib/format";
 import { useUpdater } from "./lib/updater";
 import { displayVersion } from "./lib/version";
@@ -266,9 +267,34 @@ function UpdateBanner() {
 export default function App() {
   const [page, setPage] = useState<Page>(readPage);
   const [appVersion, setAppVersion] = useState("");
+  const [onlineCount, setOnlineCount] = useState<number | null>(null);
 
   useEffect(() => {
     void getVersion().then(setAppVersion).catch(() => void 0);
+  }, []);
+
+  useEffect(() => {
+    let stopped = false;
+    const load = async () => {
+      if (document.hidden) return;
+      try {
+        const metrics = await api.concurrentUsers();
+        if (!stopped) setOnlineCount(metrics.activeUsers);
+      } catch {
+        if (!stopped) setOnlineCount(null);
+      }
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 5 * 60 * 1000);
+    const onVisibility = () => {
+      if (!document.hidden) void load();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, []);
 
   useEffect(() => {
@@ -312,6 +338,13 @@ export default function App() {
         <div className="sidebar-foot">
           <span className="dot" />
           <span className="sidebar-version">{displayVersion(appVersion) || "Valotrack"}</span>
+          <span className="sidebar-sep">·</span>
+          <span
+            className="sidebar-users"
+            title="Concurrent users in the last 5 minutes"
+          >
+            {onlineCount === null ? "- online" : `${onlineCount} online`}
+          </span>
         </div>
       </aside>
 

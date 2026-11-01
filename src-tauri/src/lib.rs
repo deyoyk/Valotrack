@@ -18,6 +18,7 @@ mod leaderboard;
 mod live;
 mod loadout;
 mod match_notes;
+mod metrics;
 mod offline;
 mod offline_client;
 mod party;
@@ -146,12 +147,14 @@ pub fn run() {
                 #[cfg(windows)]
                 apply_taskbar_icon(&window);
             }
-            discord::spawn(state);
+            discord::spawn(state.clone());
+            metrics::spawn(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::health,
             commands::client_status,
+            commands::concurrent_users,
             commands::live_board,
             commands::queue_state,
             commands::agents,

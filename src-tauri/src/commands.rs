@@ -33,6 +33,13 @@ pub fn client_status() -> serde_json::Value {
 }
 
 #[tauri::command]
+pub async fn concurrent_users(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::metrics::snapshot(state.inner()).await
+}
+
+#[tauri::command]
 pub async fn live_board(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
     crate::live::board(state.inner()).await
 }

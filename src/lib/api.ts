@@ -15,6 +15,11 @@ export type ClientStatus = {
   error: string | null;
 };
 
+export type ConcurrentUsers = {
+  activeUsers: number;
+  updatedAt: string | null;
+};
+
 export type Settings = {
   region: string;
   liveRefreshSecs: number;
@@ -786,6 +791,7 @@ export type OfflineStatus = {
 export const api = {
   health: () => invoke<Health>("health"),
   clientStatus: () => invoke<ClientStatus>("client_status"),
+  concurrentUsers: () => invoke<ConcurrentUsers>("concurrent_users"),
   liveBoard: () => invoke<LiveBoard>("live_board"),
   queueState: () => invoke<QueueState>("queue_state"),
   agents: () => invoke<{ agents: Agent[]; count: number }>("agents"),

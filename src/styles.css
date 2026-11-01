@@ -262,6 +262,19 @@ button:disabled {
   text-transform: none;
 }
 
+.sidebar-foot .sidebar-sep {
+  color: var(--dim);
+}
+
+.sidebar-foot .sidebar-users {
+  overflow: hidden;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
 .dot {
   width: 5px;
   height: 5px;

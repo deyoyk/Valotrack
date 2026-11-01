@@ -185,7 +185,8 @@ export default function Settings() {
             <div>
               <strong>Discord Rich Presence</strong>
               <span>
-                Show your map, agent and score using Valotrack's built-in Discord app.
+                Show your map, agent and score in Discord. Stays visible while
+                Valotrack is open, even outside a match.
               </span>
             </div>
             <input

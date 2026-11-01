@@ -20,6 +20,7 @@ export type Settings = {
   liveRefreshSecs: number;
   allowLiveActions: boolean;
   discordRpc: boolean;
+  discordAppId: string;
   favoriteCrosshairs: number[];
 };
 

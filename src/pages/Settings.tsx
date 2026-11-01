@@ -168,6 +168,23 @@ export default function Settings() {
             <i />
           </label>
 
+          {settings.discordRpc && (
+            <label className="field">
+              <span>Discord application ID</span>
+              <input
+                value={settings.discordAppId}
+                onChange={(event) =>
+                  setSettings({ ...settings, discordAppId: event.target.value.trim() })
+                }
+                placeholder="Paste your Discord app ID"
+              />
+              <small>
+                Create a free application in the Discord Developer Portal, then paste its
+                Application ID. Rich Presence requires that app to be running locally.
+              </small>
+            </label>
+          )}
+
           <div className="warn-note">
             <Info size={15} />
             <span>

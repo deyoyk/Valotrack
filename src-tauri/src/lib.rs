@@ -6,6 +6,7 @@ mod app;
 mod career;
 mod catalog;
 mod commands;
+mod discord;
 mod encounters;
 mod history;
 mod instalock;
@@ -30,8 +31,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let handle = app.handle();
-            let state = AppState::new(handle)?;
-            app.manage(Arc::new(state));
+            let state = Arc::new(AppState::new(handle)?);
+            app.manage(state.clone());
+            discord::spawn(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

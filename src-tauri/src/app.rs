@@ -20,6 +20,7 @@ pub struct Settings {
     pub live_refresh_secs: u64,
     pub allow_live_actions: bool,
     pub discord_rpc: bool,
+    pub discord_app_id: String,
     pub favorite_crosshairs: Vec<u32>,
 }
 
@@ -30,6 +31,7 @@ impl Default for Settings {
             live_refresh_secs: 4,
             allow_live_actions: false,
             discord_rpc: false,
+            discord_app_id: String::new(),
             favorite_crosshairs: Vec::new(),
         }
     }

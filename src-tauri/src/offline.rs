@@ -297,7 +297,7 @@ fn strip_fake_stanzas(text: &str) -> String {
     out
 }
 
-async fn handle_fake_command(engine: &OfflineEngine, text: &str) {
+fn handle_fake_command(engine: &OfflineEngine, text: &str) {
     let Some(start) = text.find("<body>") else {
         return;
     };
@@ -782,6 +782,7 @@ async fn handle_chat(
         let mut chunk = vec![0u8; 65536];
         while let Ok(read) = client_read.read(&mut chunk).await {
             if read == 0 {
+                log("c2s closed");
                 break;
             }
             pending_bytes.extend_from_slice(&chunk[..read]);
@@ -793,7 +794,7 @@ async fn handle_chat(
             let mut text = String::from_utf8_lossy(&pending_bytes[..valid]).to_string();
             pending_bytes.drain(..valid);
             if text.contains(FAKE_PUUID) {
-                handle_fake_command(&engine_in, &text).await;
+                handle_fake_command(&engine_in, &text);
                 text = strip_fake_stanzas(&text);
             }
             buffer.push_str(&text);
@@ -827,9 +828,31 @@ async fn handle_chat(
     let upstream_pump = tokio::spawn(async move {
         let mut chunk = vec![0u8; 65536];
         let mut carry: Vec<u8> = Vec::new();
-        while let Ok(read) = upstream_read.read(&mut chunk).await {
-            if read == 0 {
-                break;
+        loop {
+            let read = match tokio::time::timeout(
+                Duration::from_secs(3),
+                upstream_read.read(&mut chunk),
+            )
+            .await
+            {
+                Ok(Ok(0)) => {
+                    log("s2c closed");
+                    break;
+                }
+                Ok(Ok(read)) => read,
+                Ok(Err(_)) => break,
+                Err(_) => {
+                    if !carry.is_empty() {
+                        if client_out.send(std::mem::take(&mut carry)).is_err() {
+                            break;
+                        }
+                    }
+                    continue;
+                }
+            };
+            let shape = String::from_utf8_lossy(&chunk[..read]);
+            if shape.contains("<failure") {
+                log(&format!("s2c failure: {}", shape.chars().take(500).collect::<String>()));
             }
             if !connection_out.inserted.load(Ordering::Relaxed) {
                 carry.extend_from_slice(&chunk[..read]);
@@ -849,18 +872,21 @@ async fn handle_chat(
                         "Valotrack is active. Message offline, away, mobile, online, status or help here anytime.",
                     ));
                     carry.clear();
-                } else if carry.len() > 128 {
-                    let split = carry.len() - 128;
-                    if client_out.send(carry[..split].to_vec()).is_err() {
-                        break;
+                } else {
+                    let keep = marker_suffix(&carry, ROSTER_MARKER.as_bytes());
+                    let split = carry.len().saturating_sub(keep);
+                    if split > 0 {
+                        if client_out.send(carry[..split].to_vec()).is_err() {
+                            break;
+                        }
+                        carry.drain(..split);
                     }
-                    carry.drain(..split);
                 }
             } else if client_out.send(chunk[..read].to_vec()).is_err() {
                 break;
             }
         }
-        if !carry.is_empty() && !connection_out.inserted.load(Ordering::Relaxed) {
+        if !carry.is_empty() {
             let _ = client_out.send(carry);
         }
     });
@@ -957,6 +983,15 @@ fn version_from_presence(stanza: &str) -> Option<String> {
 
 fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
+}
+
+fn marker_suffix(haystack: &[u8], needle: &[u8]) -> usize {
+    for length in (1..needle.len()).rev() {
+        if haystack.ends_with(&needle[..length]) {
+            return length;
+        }
+    }
+    0
 }
 
 fn partial_presence_prefix(tail: &str) -> usize {
@@ -1070,6 +1105,31 @@ mod tests {
         let (out, _, last) = process_presences(stanza, "offline");
         assert_eq!(out, stanza);
         assert!(last.is_none());
+    }
+
+    #[test]
+    fn marker_suffix_only_holds_partial_tags() {
+        assert_eq!(
+            marker_suffix(b"payload<query xmlns=", ROSTER_MARKER.as_bytes()),
+            b"<query xmlns=".len()
+        );
+        assert_eq!(marker_suffix(b"stream:features", ROSTER_MARKER.as_bytes()), 0);
+    }
+
+    #[test]
+    fn fake_friend_commands_switch_status() {
+        let dir = std::env::temp_dir().join(format!("valotrack-offline-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let engine = OfflineEngine::new(&dir, reqwest::Client::new());
+        let stanza = format!(
+            "<message to='{}/{FAKE_RES}' type='chat'><body>away</body></message>",
+            fake_jid()
+        );
+        handle_fake_command(&engine, &stanza);
+        assert_eq!(engine.status.lock().as_str(), "away");
+        handle_fake_command(&engine, &stanza.replace("away", "online"));
+        assert_eq!(engine.status.lock().as_str(), "online");
+        let _ = std::fs::remove_dir_all(dir);
     }
 }
 

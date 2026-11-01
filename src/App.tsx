@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "./lib/format";
 import Live from "./pages/Live";
+import Matchmaking from "./pages/Matchmaking";
 import Settings from "./pages/Settings";
 
 type Page =
@@ -45,7 +46,7 @@ const playNav: NavItem[] = [
   { id: "performance", label: "Performance", icon: Activity, soon: true },
   { id: "encounters", label: "Encounters", icon: Users, soon: true },
   { id: "collection", label: "Collection", icon: Wallet, soon: true },
-  { id: "matchmaking", label: "Matchmaking", icon: Swords, soon: true },
+  { id: "matchmaking", label: "Matchmaking", icon: Swords },
 ];
 
 const toolsNav: NavItem[] = [
@@ -153,6 +154,7 @@ export default function App() {
 
       <main className="main">
         {page === "live" && <Live />}
+        {page === "matchmaking" && <Matchmaking />}
         {page === "settings" && <Settings />}
       </main>
     </div>

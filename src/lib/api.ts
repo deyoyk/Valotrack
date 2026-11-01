@@ -128,6 +128,27 @@ export type LiveBoard = {
   notice?: { level: string; action: string; message: string };
 };
 
+export type ActionResponse = {
+  ok: boolean;
+  status?: string;
+  message: string;
+  queue?: QueueState;
+  inQueue?: boolean;
+  side?: string;
+  map?: string;
+  agent?: string;
+};
+
+export type InstalockStatus = {
+  running: boolean;
+  status: string;
+  message: string;
+  agent: string | null;
+  mode: string;
+  side: string | null;
+  map: string | null;
+};
+
 export type QueueState = {
   available: boolean;
   partyId?: string;
@@ -152,4 +173,18 @@ export const api = {
   agents: () => invoke<{ agents: Agent[]; count: number }>("agents"),
   settings: () => invoke<Settings>("settings_get"),
   saveSettings: (settings: Settings) => invoke<Settings>("settings_set", { settings }),
+  queueAction: (action: string, queueId: string | null, dryRun: boolean) =>
+    invoke<ActionResponse>("queue_action", { action, queueId, dryRun }),
+  dodge: (dryRun: boolean) => invoke<ActionResponse>("dodge", { dryRun }),
+  checkSide: () => invoke<ActionResponse>("check_side"),
+  instalockNow: (agent: string, mode: string, dryRun: boolean) =>
+    invoke<ActionResponse>("instalock_now", { agent, mode, dryRun }),
+  instalockStart: (
+    agent: string,
+    mode: string,
+    delay: number,
+    perMap: Record<string, string>,
+  ) => invoke<ActionResponse & { running?: boolean }>("instalock_start", { agent, mode, delay, perMap }),
+  instalockStop: () => invoke<{ ok: boolean; running: boolean }>("instalock_stop"),
+  instalockStatus: () => invoke<InstalockStatus>("instalock_status"),
 };

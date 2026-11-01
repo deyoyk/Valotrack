@@ -1,14 +1,19 @@
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::{Mutex, RwLock},
+    sync::Arc,
     time::{Duration, Instant},
 };
 
-use serde::{Deserialize, Serialize};
+use parking_lot::{Mutex, RwLock};
 use tauri::{AppHandle, Manager};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+use crate::riot::RiotRuntime;
+use crate::valo::Valo;
+
+pub mod store;
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub region: String,
@@ -49,12 +54,25 @@ impl Settings {
     }
 }
 
+#[derive(Clone)]
+pub struct CachedLive {
+    pub at: Instant,
+    pub value: serde_json::Value,
+}
+
 pub struct AppState {
     pub data_dir: PathBuf,
     pub http: reqwest::Client,
     pub settings: RwLock<Settings>,
-    pub live_cache: Mutex<Option<(Instant, serde_json::Value)>>,
+    pub live_cache: Mutex<Option<CachedLive>>,
     pub json_cache: Mutex<HashMap<String, (Instant, serde_json::Value)>>,
+    pub riot: RiotRuntime,
+    pub valo: Arc<Valo>,
+    pub stats: Mutex<HashMap<String, crate::live::PlayerStats>>,
+    pub ranks: Mutex<HashMap<String, (crate::riot::RankInfo, Instant)>>,
+    pub details: Mutex<HashMap<String, (serde_json::Value, Instant)>>,
+    pub meta: Mutex<HashMap<String, serde_json::Value>>,
+    pub instalock: Arc<crate::instalock::InstalockState>,
 }
 
 impl AppState {
@@ -72,17 +90,25 @@ impl AppState {
             .pool_max_idle_per_host(16)
             .build()
             .map_err(|e| e.to_string())?;
+        let valo = Valo::new(http.clone());
         Ok(Self {
             data_dir,
-            http,
+            http: http.clone(),
             settings: RwLock::new(settings),
             live_cache: Mutex::new(None),
             json_cache: Mutex::new(HashMap::new()),
+            riot: RiotRuntime::new(http),
+            valo,
+            stats: Mutex::new(HashMap::new()),
+            ranks: Mutex::new(HashMap::new()),
+            details: Mutex::new(HashMap::new()),
+            meta: Mutex::new(HashMap::new()),
+            instalock: Arc::new(crate::instalock::InstalockState::new()),
         })
     }
 
     pub fn cache_json(&self, key: &str) -> Option<serde_json::Value> {
-        let cache = self.json_cache.lock().ok()?;
+        let cache = self.json_cache.lock();
         cache
             .get(key)
             .filter(|(at, _)| at.elapsed() < Duration::from_secs(60))
@@ -90,11 +116,14 @@ impl AppState {
     }
 
     pub fn put_json(&self, key: String, value: serde_json::Value) {
-        if let Ok(mut cache) = self.json_cache.lock() {
-            if cache.len() > 128 {
-                cache.clear();
-            }
-            cache.insert(key, (Instant::now(), value));
+        let mut cache = self.json_cache.lock();
+        if cache.len() > 128 {
+            cache.clear();
         }
+        cache.insert(key, (Instant::now(), value));
+    }
+
+    pub fn settings_snapshot(&self) -> Settings {
+        self.settings.read().clone()
     }
 }

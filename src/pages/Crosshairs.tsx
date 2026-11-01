@@ -30,6 +30,24 @@ type Entry = {
 
 const ALL = crosshairsData as Entry[];
 const FAVORITES_KEY = "valotrack-crosshair-favorites";
+const CUSTOM_KEY = "valotrack-custom-crosshairs";
+
+function loadCustom(): Entry[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CUSTOM_KEY) ?? "[]");
+    return Array.isArray(raw)
+      ? raw.filter(
+          (entry) =>
+            entry &&
+            typeof entry.id === "number" &&
+            typeof entry.name === "string" &&
+            typeof entry.code === "string",
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 function useFavorites() {
   const [favorites, setFavorites] = useState<number[]>(() => {
@@ -237,11 +255,8 @@ function BuilderModal({
           <CrosshairPreview settings={settings} size={300} scene={scene} state={state} />
           <PreviewControls scene={scene} setScene={setScene} state={state} setState={setState} />
           <code className="code-box builder-code">{code}</code>
-          <button
-            className="button small"
-            onClick={() => onSaveFavorite(code)}
-          >
-            <Heart size={12} /> Save to favorites
+          <button className="button small" onClick={() => onSaveFavorite(code)}>
+            <Heart size={12} /> Save to library
           </button>
         </div>
         <div className="builder-controls">
@@ -402,8 +417,8 @@ function CompareModal({
 }) {
   const [left, setLeft] = useState(entries[0]?.id ?? ALL[0].id);
   const [right, setRight] = useState(entries[1]?.id ?? ALL[1].id);
-  const leftEntry = ALL.find((entry) => entry.id === left) ?? ALL[0];
-  const rightEntry = ALL.find((entry) => entry.id === right) ?? ALL[1];
+  const leftEntry = entries.find((entry) => entry.id === left) ?? entries[0] ?? ALL[0];
+  const rightEntry = entries.find((entry) => entry.id === right) ?? entries[1] ?? ALL[1];
   return (
     <Modal onClose={onClose} label="Compare crosshairs" className="compare-modal">
       <div className="builder-head">
@@ -423,7 +438,7 @@ function CompareModal({
               value={value}
               onChange={(event) => setValue(Number(event.target.value))}
             >
-              {ALL.map((row) => (
+              {entries.map((row) => (
                 <option value={row.id} key={row.id}>
                   {row.name} · {row.cat}
                 </option>
@@ -445,16 +460,18 @@ export default function Crosshairs() {
   const [detail, setDetail] = useState<Entry | null>(null);
   const [builder, setBuilder] = useState<CrosshairSettings | null>(null);
   const [compare, setCompare] = useState(false);
+  const [custom, setCustom] = useState<Entry[]>(loadCustom);
   const { favorites, toggle, isFavorite } = useFavorites();
+  const entries = useMemo(() => [...ALL, ...custom], [custom]);
 
   const categories = useMemo(
-    () => ["All", ...Array.from(new Set(ALL.map((entry) => entry.cat))).sort()],
-    [],
+    () => ["All", ...Array.from(new Set(entries.map((entry) => entry.cat))).sort()],
+    [entries],
   );
 
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return ALL.filter((entry) => {
+    return entries.filter((entry) => {
       if (category !== "All" && entry.cat !== category) return false;
       if (onlyFavorites && !favorites.includes(entry.id)) return false;
       if (!needle) return true;
@@ -463,7 +480,7 @@ export default function Crosshairs() {
       if (sort === "name") return a.name.localeCompare(b.name);
       return b.copied - a.copied;
     });
-  }, [category, favorites, onlyFavorites, search, sort]);
+  }, [category, entries, favorites, onlyFavorites, search, sort]);
 
   const proCount = useMemo(() => ALL.filter((entry) => entry.cat === "Pro").length, []);
 
@@ -604,7 +621,21 @@ export default function Crosshairs() {
         <BuilderModal
           initial={builder}
           onClose={() => setBuilder(null)}
-          onSaveFavorite={() => setBuilder(null)}
+          onSaveFavorite={(code) => {
+            const name = window.prompt("Name this crosshair", "Custom crosshair");
+            if (!name?.trim()) return;
+            const entry: Entry = {
+              id: -Date.now(),
+              name: name.trim().slice(0, 60),
+              code,
+              cat: "Custom",
+              copied: 0,
+            };
+            const next = [entry, ...custom].slice(0, 60);
+            setCustom(next);
+            localStorage.setItem(CUSTOM_KEY, JSON.stringify(next));
+            setBuilder(null);
+          }}
         />
       )}
 
@@ -612,8 +643,8 @@ export default function Crosshairs() {
         <CompareModal
           entries={
             favorites.length
-              ? ALL.filter((entry) => favorites.includes(entry.id))
-              : [ALL[0], ALL[1]]
+              ? entries.filter((entry) => favorites.includes(entry.id))
+              : entries.slice(0, 2)
           }
           onClose={() => setCompare(false)}
         />

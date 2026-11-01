@@ -58,6 +58,7 @@ pub fn run() {
             commands::encounter,
             commands::inventory,
             commands::offline_status,
+            commands::offline_start,
             commands::offline_launch,
             commands::offline_set_status,
             commands::offline_set_enabled,

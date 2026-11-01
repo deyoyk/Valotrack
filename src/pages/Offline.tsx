@@ -152,6 +152,30 @@ export default function Offline() {
             {busy === "launch" ? <Loader2 size={15} className="spin" /> : <Play size={15} />}
             Launch with relay
           </button>
+          {!status?.running && (
+            <button
+              className="button"
+              onClick={async () => {
+                setBusy("start");
+                try {
+                  const next = await api.offlineStart();
+                  setStatus(next);
+                  setMessage({ ok: true, text: "Relay started. Launch VALORANT to connect it." });
+                } catch (cause) {
+                  setMessage({
+                    ok: false,
+                    text: cause instanceof Error ? cause.message : String(cause),
+                  });
+                } finally {
+                  setBusy(null);
+                }
+              }}
+              disabled={busy !== null}
+            >
+              {busy === "start" ? <Loader2 size={15} className="spin" /> : <Radio size={15} />}
+              Start relay only
+            </button>
+          )}
           <button
             className="button"
             onClick={() => setStatusMode("online")}

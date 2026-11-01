@@ -596,3 +596,37 @@ fn kill_riot() {
         let _ = command.status();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn presence_rewrite_hides_game_activity() {
+        let stanza = "<presence from='a'><games><valorant/></games><show>chat</show><status>In game</status></presence>";
+        let rewritten = rewrite_presence(stanza, "offline");
+        assert!(rewritten.contains("<show>offline</show>"));
+        assert!(!rewritten.contains("<status>"));
+        assert!(!rewritten.contains("<valorant/>"));
+    }
+
+    #[test]
+    fn split_presence_is_buffered() {
+        let (out, rest, last) = process_presences("<presence from='a'><show>chat</show>", "away");
+        assert!(out.is_empty());
+        assert!(rest.starts_with("<presence"));
+        assert!(last.is_none());
+        let (out, rest, last) = process_presences(&(rest + "</presence>"), "away");
+        assert!(out.contains("<show>away</show>"));
+        assert!(rest.is_empty());
+        assert!(last.is_some());
+    }
+
+    #[test]
+    fn directed_presence_is_untouched() {
+        let stanza = "<presence to='b'><show>chat</show></presence>";
+        let (out, _, last) = process_presences(stanza, "offline");
+        assert_eq!(out, stanza);
+        assert!(last.is_none());
+    }
+}

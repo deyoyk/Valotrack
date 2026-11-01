@@ -94,14 +94,6 @@ pub fn agent_name_by_uuid(uuid: &str) -> Option<&'static str> {
         .map(|a| a.name)
 }
 
-pub fn agent_color(name: &str) -> &'static str {
-    AGENTS
-        .iter()
-        .find(|a| a.name.eq_ignore_ascii_case(name))
-        .map(|a| a.color)
-        .unwrap_or("#8B978F")
-}
-
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Rank {
@@ -196,5 +188,44 @@ pub fn mode_label(queue: &str) -> &'static str {
         "skirmish2v2" => "Skirmish 2v2",
         "custom" | "" => "Custom",
         _ => "Custom",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ranks_cover_every_tier() {
+        assert_eq!(rank_from_tier(0).name, "Unranked");
+        assert_eq!(rank_from_tier(1).name, "Iron 1");
+        assert_eq!(rank_from_tier(16).name, "Diamond 1");
+        assert_eq!(rank_from_tier(25).name, "Radiant");
+        assert_eq!(rank_from_tier(99).name, "Radiant");
+    }
+
+    #[test]
+    fn map_aliases_resolve() {
+        assert_eq!(
+            map_name_from_id("/Game/Maps/Triad/Triad"),
+            "Haven"
+        );
+        assert_eq!(
+            map_name_from_id("/Game/Maps/Canyon/Canyon"),
+            "Fracture"
+        );
+        assert_eq!(map_name_from_id("/Game/Maps/Port/Port"), "Icebox");
+    }
+
+    #[test]
+    fn agent_lookup_is_case_insensitive() {
+        assert_eq!(resolve_agent("jett").unwrap().name, "Jett");
+        assert_eq!(
+            resolve_agent("add6443a-41bd-e414-f6ad-e58d267f4e95")
+                .unwrap()
+                .name,
+            "Jett"
+        );
+        assert!(resolve_agent("missing").is_none());
     }
 }

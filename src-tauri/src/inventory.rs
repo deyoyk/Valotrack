@@ -3,11 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use futures::future::join_all;
 use serde_json::{json, Value};
 
-use crate::{
-    app::AppState,
-    history::now,
-    valo::Valo,
-};
+use crate::{app::AppState, history::now};
 
 const ITEM_TYPES: &[(&str, &str)] = &[
     ("skins", "e7c63390-eda7-46e0-bb7a-a6abdacd2433"),
@@ -158,32 +154,4 @@ async fn fetch_entitlements(
     Some(rows)
 }
 
-pub async fn weapon_skins(
-    state: &Arc<AppState>,
-    weapon: &str,
-) -> Result<Vec<Value>, String> {
-    let skins = state.valo.skins().await;
-    let suffix = format!(" {}", weapon.to_lowercase());
-    let mut rows = Vec::new();
-    for skin in skins {
-        let name = skin
-            .get("displayName")
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .trim();
-        if !name.to_lowercase().ends_with(&suffix) || name.to_lowercase().starts_with("standard") {
-            continue;
-        }
-        rows.push(json!({
-            "name": name[..name.len() - suffix.len()].trim(),
-            "icon": skin.get("displayIcon").and_then(Value::as_str)
-        }));
-    }
-    Ok(rows)
-}
 
-pub fn skin_url(skin_id: &str) -> String {
-    format!("https://media.valorant-api.com/weapons/skins/{skin_id}/displayicon.png")
-}
-
-pub fn _valo(_: &Valo) {}

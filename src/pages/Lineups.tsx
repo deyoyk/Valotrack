@@ -42,10 +42,7 @@ function thumbnail(lineup: Lineup) {
 }
 
 function guideUrl(lineup: Lineup) {
-  const query = encodeURIComponent(
-    `VALORANT ${lineup.agent} ${lineup.map} ${lineup.ability} ${lineup.title}`,
-  );
-  return `https://www.youtube.com/results?search_query=${query}`;
+  return `https://strats.gg/valorant/lineups/${lineup.stratsId}`;
 }
 
 export default function Lineups() {
@@ -105,7 +102,7 @@ export default function Lineups() {
   }, [ability, agent, deferredSearch, mapLineups]);
 
   const active = selected ?? rows[0] ?? null;
-  const pins = rows.slice(0, 160);
+  const pins = rows.slice(0, 60);
 
   function toggleFavorite(id: string) {
     setFavorites((current) => {
@@ -169,7 +166,7 @@ export default function Lineups() {
               </button>
             </div>
             <span className="callout-hint">
-              <Target size={12} /> {rows.length} lineups
+              <Target size={12} /> {rows.length} lineups · top pins
             </span>
           </div>
           <div className="lineup-map">

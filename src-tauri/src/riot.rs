@@ -1150,3 +1150,49 @@ impl RateLimiter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn rank_parser_reads_current_and_peak() {
+        let mmr = json!({
+            "QueueSkills": {
+                "competitive": {
+                    "SeasonalInfoBySeasonID": {
+                        "act-current": {
+                            "CompetitiveTier": 15,
+                            "RankedRating": 42,
+                            "LeaderboardRank": 1200,
+                            "NumberOfWinsWithPlacements": 12,
+                            "NumberOfGames": 20,
+                            "WinsByTier": { "15": 5 }
+                        },
+                        "act-old": {
+                            "CompetitiveTier": 18,
+                            "WinsByTier": { "18": 3 }
+                        }
+                    }
+                }
+            }
+        });
+        let rank = parse_rank(&mmr, Some("act-current"), Some("act-old"));
+        assert!(rank.ok);
+        assert_eq!(rank.tier, 15);
+        assert_eq!(rank.rr, 42);
+        assert_eq!(rank.leaderboard, 1200);
+        assert_eq!(rank.previous, 18);
+        assert_eq!(rank.peak, 18);
+        assert_eq!(rank.win_rate, 60);
+    }
+
+    #[test]
+    fn presence_private_decodes_base64_json() {
+        let raw = B64.encode(r#"{"sessionLoopState":"PREGAME"}"#);
+        let value = decode_private(&raw).unwrap();
+        assert_eq!(value["sessionLoopState"], "PREGAME");
+        assert!(decode_private("not base64").is_none());
+    }
+}

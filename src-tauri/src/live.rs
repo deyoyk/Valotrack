@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use crate::{
     app::AppState,
     catalog::{self, PARTY_COLORS},
-    riot::{RankInfo, RiotError, Session},
+    riot::{RankInfo, Session},
 };
 
 #[derive(Clone, Default)]
@@ -452,12 +452,12 @@ async fn build_players(
         let rank_meta = catalog::rank_from_tier(rank.tier);
         let peak_meta = catalog::rank_from_tier(rank.peak);
         let previous_meta = catalog::rank_from_tier(rank.previous);
-        let rank_icon = rank_icons
-            .get(&rank.tier)
-            .and_then(|(small, _)| small.clone());
-        let peak_icon = rank_icons
-            .get(&rank.peak)
-            .and_then(|(small, _)| small.clone());
+        let rank_icon = (rank.tier > 0)
+            .then(|| rank_icons.get(&rank.tier).and_then(|(small, _)| small.clone()))
+            .flatten();
+        let peak_icon = (rank.peak > 0)
+            .then(|| rank_icons.get(&rank.peak).and_then(|(small, _)| small.clone()))
+            .flatten();
         let (smurf, reasons) = smurf_signals(
             player.level,
             rank.peak,
@@ -465,10 +465,10 @@ async fn build_players(
             rank.win_rate,
             rank.games,
         );
-        let peak_act = if rank.peak_season.is_empty() {
-            None
-        } else {
+        let peak_act = if rank.peak > 0 && !rank.peak_season.is_empty() {
             state.valo.season_label(&rank.peak_season).await
+        } else {
+            None
         };
         let pending = game_state != "MENUS"
             && (!player.stats.done || player.stats.kd.is_none())
@@ -671,10 +671,19 @@ fn finalize(
     } else {
         None
     };
-    let side = match self_team {
-        "Red" => Some("Attacker"),
-        "Blue" => Some("Defender"),
-        _ => None,
+    let side = if state == "INGAME" || state == "PREGAME" {
+        match self_team {
+            "Red" => Some("Attacker"),
+            "Blue" => Some("Defender"),
+            _ => None,
+        }
+    } else {
+        None
+    };
+    let mode = if state == "MENUS" {
+        "Lobby"
+    } else {
+        catalog::mode_label(queue)
     };
     json!({
         "state": state,
@@ -688,7 +697,7 @@ fn finalize(
         "source": "local",
         "map": if map.is_empty() { Value::Null } else { json!(map) },
         "mapSplash": map_splash,
-        "mode": catalog::mode_label(queue),
+        "mode": mode,
         "matchId": match_id,
         "selfTeam": self_team,
         "side": side,
@@ -834,8 +843,12 @@ async fn build_lobby(
         let rank_meta = catalog::rank_from_tier(rank.tier);
         let peak_meta = catalog::rank_from_tier(rank.peak);
         let previous_meta = catalog::rank_from_tier(rank.previous);
-        let rank_icon = rank_icons.get(&rank.tier).and_then(|(small, _)| small.clone());
-        let peak_icon = rank_icons.get(&rank.peak).and_then(|(small, _)| small.clone());
+        let rank_icon = (rank.tier > 0)
+            .then(|| rank_icons.get(&rank.tier).and_then(|(small, _)| small.clone()))
+            .flatten();
+        let peak_icon = (rank.peak > 0)
+            .then(|| rank_icons.get(&rank.peak).and_then(|(small, _)| small.clone()))
+            .flatten();
         let (smurf, reasons) = smurf_signals(
             player.level,
             rank.peak,
@@ -843,10 +856,10 @@ async fn build_lobby(
             rank.win_rate,
             rank.games,
         );
-        let peak_act = if rank.peak_season.is_empty() {
-            None
-        } else {
+        let peak_act = if rank.peak > 0 && !rank.peak_season.is_empty() {
             state.valo.season_label(&rank.peak_season).await
+        } else {
+            None
         };
         let party = (puuids.len() > 1).then(|| {
             json!({
@@ -1166,11 +1179,31 @@ pub async fn party_state(state: &Arc<AppState>) -> Result<Value, String> {
         .map_err(|error| error.to_string())
 }
 
-pub fn map_error(error: RiotError) -> Value {
-    json!({
-        "available": false,
-        "state": "OFFLINE",
-        "stateLabel": "Offline",
-        "message": error.to_string()
-    })
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn smurf_flags_low_level_high_peak() {
+        let (flagged, reasons) = smurf_signals(20, 21, None, 0, 0);
+        assert!(flagged);
+        assert!(!reasons.is_empty());
+    }
+
+    #[test]
+    fn experienced_account_is_not_flagged() {
+        let (flagged, reasons) = smurf_signals(300, 21, Some(1.4), 70, 40);
+        assert!(!flagged);
+        assert!(reasons.is_empty());
+    }
+
+    #[test]
+    fn win_probability_moves_with_rank_and_kd() {
+        let mine = json!({ "avgRankTier": 15.0, "avgKd": 1.4 });
+        let theirs = json!({ "avgRankTier": 10.0, "avgKd": 0.9 });
+        let probability = win_probability(&mine, &theirs).unwrap();
+        assert!(probability > 50);
+    }
 }

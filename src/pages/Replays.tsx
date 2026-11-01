@@ -338,8 +338,10 @@ export default function Replays() {
       .reverse();
   }, [round, time]);
 
-  const currentScore = replay && round ? round.score ?? teamScore(replay, roundIndex) : {};
-  const scoreRounds = replay && round ? teamScore(replay, roundIndex) : {};
+  const currentScore =
+    replay && round
+      ? teamScore(replay, time >= round.endMs ? roundIndex : roundIndex - 1)
+      : {};
   const playersByTeam = useMemo(() => {
     const groups: Record<string, ReplayPlayer[]> = {};
     for (const player of replay?.players ?? []) {
@@ -453,7 +455,7 @@ export default function Replays() {
               {["Red", "Blue"].map((team) => (
                 <div key={team} style={{ color: TEAM_COLORS[team] }}>
                   <span>{team}</span>
-                  <strong>{currentScore[team] ?? scoreRounds[team] ?? 0}</strong>
+                  <strong>{currentScore[team] ?? 0}</strong>
                 </div>
               ))}
               <em>round {roundIndex + 1}</em>

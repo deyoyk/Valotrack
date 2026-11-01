@@ -63,18 +63,20 @@ pub async fn career(
     let mut mate_ids = Vec::new();
     for (mid, detail) in &details {
         if let Some(row) = career_match(detail, puuid, mid) {
-            mate_ids.extend(
-                row.get("teammates")
-                    .and_then(Value::as_array)
-                    .map(|mates| {
-                        mates
-                            .iter()
-                            .filter_map(|mate| mate.get("puuid").and_then(Value::as_str))
-                            .map(str::to_string)
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default(),
-            );
+            for key in ["teammates", "opponents"] {
+                mate_ids.extend(
+                    row.get(key)
+                        .and_then(Value::as_array)
+                        .map(|mates| {
+                            mates
+                                .iter()
+                                .filter_map(|mate| mate.get("puuid").and_then(Value::as_str))
+                                .map(str::to_string)
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default(),
+                );
+            }
             rows.push(row);
         }
     }
@@ -458,6 +460,29 @@ pub async fn match_detail(
         return Err("Match details are unavailable.".into());
     }
     let mut value = parse_match_detail(&detail, match_id, subject);
+    let subjects: Vec<String> = detail
+        .get("players")
+        .and_then(Value::as_array)
+        .map(|players| {
+            players
+                .iter()
+                .filter_map(|player| player.get("subject").and_then(Value::as_str))
+                .map(str::to_string)
+                .collect()
+        })
+        .unwrap_or_default();
+    let names = session.reveal_names(&subjects).await;
+    if let Some(players) = value.get_mut("players").and_then(Value::as_array_mut) {
+        for player in players {
+            if let Some(name) = player
+                .get("puuid")
+                .and_then(Value::as_str)
+                .and_then(|puuid| names.get(puuid))
+            {
+                player["name"] = json!(name);
+            }
+        }
+    }
     let map = value.get("map").and_then(Value::as_str).unwrap_or("");
     value["mapSplash"] = json!(state.valo.map_splash(map).await);
     state

@@ -256,6 +256,14 @@ pub fn offline_status(state: State<'_, Arc<AppState>>) -> serde_json::Value {
 }
 
 #[tauri::command]
+pub async fn offline_start(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    state.offline.start().await?;
+    Ok(state.offline.status())
+}
+
+#[tauri::command]
 pub async fn offline_launch(
     state: State<'_, Arc<AppState>>,
     status: Option<String>,

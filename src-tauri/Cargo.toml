@@ -1,6 +1,6 @@
 [package]
 name = "valotrack"
-version = "1.0.133"
+version = "1.0.134"
 description = "Fast local VALORANT companion"
 authors = ["Valotrack"]
 edition = "2021"

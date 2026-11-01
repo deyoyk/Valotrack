@@ -33,7 +33,7 @@ jobs:
       - name: Compute build number
         shell: pwsh
         run: |
-          $build = 122 + [int]$env:GITHUB_RUN_NUMBER
+          $build = 121 + [int]$env:GITHUB_RUN_NUMBER
           "BUILD=$build" >> $env:GITHUB_ENV
           "APP_VERSION=1.0.$build" >> $env:GITHUB_ENV
           "TAG=v$build" >> $env:GITHUB_ENV
@@ -55,10 +55,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view $env:TAG 2>$null
-          if ($LASTEXITCODE -eq 0) {
+          $existing = gh release view $env:TAG --json tagName 2>$null
+          if ($LASTEXITCODE -eq 0 -and $existing) {
             throw "Release $env:TAG already exists. Trigger a new run for the next build."
           }
+          exit 0
 
       - name: Build signed installer
         shell: pwsh

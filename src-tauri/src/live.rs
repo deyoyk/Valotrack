@@ -42,12 +42,54 @@ pub async fn board(state: &Arc<AppState>) -> Result<Value, String> {
         }
     }
     let settings = state.settings_snapshot();
-    let session = state
-        .riot
-        .session(&settings.region)
-        .await
-        .map_err(|error| error.to_string())?;
-    let value = build(state, session).await?;
+    let session = match state.riot.session(&settings.region).await {
+        Ok(session) => session,
+        Err(error) => {
+            if let Some(cached) = state.live_cache.lock().as_ref() {
+                if cached.at.elapsed() < Duration::from_secs(60) {
+                    return Ok(cached.value.clone());
+                }
+            }
+            return Ok(json!({
+                "available": false,
+                "state": "OFFLINE",
+                "stateLabel": "Offline",
+                "source": "local",
+                "players": [],
+                "teams": {},
+                "parties": [],
+                "notice": {
+                    "level": "info",
+                    "action": "open_game",
+                    "message": error.to_string()
+                }
+            }));
+        }
+    };
+    let value = match build(state, session).await {
+        Ok(value) => value,
+        Err(error) => {
+            if let Some(cached) = state.live_cache.lock().as_ref() {
+                if cached.at.elapsed() < Duration::from_secs(90) {
+                    return Ok(cached.value.clone());
+                }
+            }
+            return Ok(json!({
+                "state": "CLIENT_BUSY",
+                "stateLabel": "Client busy",
+                "source": "local",
+                "players": [],
+                "teams": {},
+                "parties": [],
+                "notice": {
+                    "level": "warn",
+                    "action": "retry",
+                    "message": "Riot's local service is still starting. Retrying automatically."
+                },
+                "detail": error
+            }));
+        }
+    };
     if let Some(self_player) = value
         .get("players")
         .and_then(Value::as_array)

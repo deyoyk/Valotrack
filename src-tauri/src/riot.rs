@@ -171,10 +171,17 @@ impl Session {
     }
 
     pub async fn pd_get(&self, path: &str) -> Result<Value, RiotError> {
-        let response = self
-            .execute(Method::GET, self.pd_url(path), self.headers.clone(), None, true)
-            .await?;
-        decode(response).await
+        for attempt in 0..2 {
+            let response = self
+                .execute(Method::GET, self.pd_url(path), self.headers.clone(), None, true)
+                .await?;
+            if response.status() == reqwest::StatusCode::SERVICE_UNAVAILABLE && attempt == 0 {
+                tokio::time::sleep(Duration::from_millis(450)).await;
+                continue;
+            }
+            return decode(response).await;
+        }
+        Err(RiotError::Other("Riot service unavailable".into()))
     }
 
     pub async fn pd_put(&self, path: &str, body: &Value) -> Result<Value, RiotError> {
@@ -191,10 +198,17 @@ impl Session {
     }
 
     pub async fn glz_get(&self, path: &str) -> Result<Value, RiotError> {
-        let response = self
-            .execute(Method::GET, self.glz_url(path), self.headers.clone(), None, true)
-            .await?;
-        decode(response).await
+        for attempt in 0..2 {
+            let response = self
+                .execute(Method::GET, self.glz_url(path), self.headers.clone(), None, true)
+                .await?;
+            if response.status() == reqwest::StatusCode::SERVICE_UNAVAILABLE && attempt == 0 {
+                tokio::time::sleep(Duration::from_millis(450)).await;
+                continue;
+            }
+            return decode(response).await;
+        }
+        Err(RiotError::Other("Riot service unavailable".into()))
     }
 
     pub async fn glz_post(&self, path: &str, body: Option<&Value>) -> Result<Response, RiotError> {

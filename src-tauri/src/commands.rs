@@ -64,7 +64,7 @@ pub async fn owned_agents(
     Ok(serde_json::json!({
         "agents": agents,
         "count": agents.len(),
-        "ownedIds": owned,
+        "ownedIds": crate::catalog::owned_agent_ids(&owned),
         "account": crate::content::account_label(&session).await
     }))
 }
@@ -136,10 +136,7 @@ pub async fn instalock_start(
     let owned = crate::content::owned_ids_result(&session, crate::content::ITEM_AGENT)
         .await
         .map_err(|error| format!("Could not verify agent ownership: {error}"))?;
-    if !owned
-        .iter()
-        .any(|id| id.eq_ignore_ascii_case(resolved.uuid))
-    {
+    if !crate::catalog::is_agent_owned(&owned, resolved.uuid) {
         return Err(format!(
             "You don't own {} on this account.",
             resolved.name
@@ -159,10 +156,7 @@ pub async fn instalock_start(
                 ignored.push(name.to_string());
                 return false;
             };
-            if !owned
-                .iter()
-                .any(|id| id.eq_ignore_ascii_case(agent.uuid))
-            {
+            if !crate::catalog::is_agent_owned(&owned, agent.uuid) {
                 ignored.push(agent.name.to_string());
                 return false;
             }

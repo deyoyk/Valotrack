@@ -56,6 +56,38 @@ pub struct Agent {
     pub full_portrait: String,
 }
 
+/// Agents every VALORANT account can use without an entitlement purchase.
+pub const DEFAULT_AGENT_UUIDS: &[&str] = &[
+    "add6443a-41bd-e414-f6ad-e58d267f4e95", // Jett
+    "eb93336a-449b-9c1b-0a54-a891f7921d69", // Phoenix
+    "9f0d8ba9-4140-b941-57d3-a7ad57c6b417", // Brimstone
+    "569fdd95-4d10-43ab-ca70-79becc718b46", // Sage
+    "320b2a48-4d9b-a075-30f1-1f93a9b638fa", // Sova
+];
+
+pub fn is_default_agent(uuid: &str) -> bool {
+    DEFAULT_AGENT_UUIDS
+        .iter()
+        .any(|id| id.eq_ignore_ascii_case(uuid))
+}
+
+pub fn is_agent_owned(owned: &[String], uuid: &str) -> bool {
+    is_default_agent(uuid) || owned.iter().any(|id| id.eq_ignore_ascii_case(uuid))
+}
+
+pub fn owned_agent_ids(owned: &[String]) -> Vec<String> {
+    let mut ids = DEFAULT_AGENT_UUIDS
+        .iter()
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>();
+    for id in owned {
+        if !ids.iter().any(|known| known.eq_ignore_ascii_case(id)) {
+            ids.push(id.clone());
+        }
+    }
+    ids
+}
+
 pub fn agents() -> Vec<Agent> {
     AGENTS
         .iter()
@@ -77,14 +109,9 @@ pub fn agents() -> Vec<Agent> {
 }
 
 pub fn agents_owned(owned: &[String]) -> Vec<Agent> {
-    let owned: Vec<String> = owned.iter().map(|id| id.to_lowercase()).collect();
     agents()
         .into_iter()
-        .filter(|agent| {
-            owned
-                .iter()
-                .any(|id| id.eq_ignore_ascii_case(agent.uuid))
-        })
+        .filter(|agent| is_agent_owned(owned, agent.uuid))
         .collect()
 }
 
@@ -248,8 +275,12 @@ mod tests {
             "not-an-agent".to_string(),
         ];
         let agents = agents_owned(&owned);
-        assert_eq!(agents.len(), 1);
-        assert_eq!(agents[0].name, "Reyna");
-        assert!(agents_owned(&[]).is_empty());
+        assert_eq!(agents.len(), 6);
+        assert!(agents.iter().any(|agent| agent.name == "Reyna"));
+        assert!(agents.iter().any(|agent| agent.name == "Jett"));
+        assert!(agents.iter().any(|agent| agent.name == "Sova"));
+        assert_eq!(agents_owned(&[]).len(), 5);
+        assert!(is_agent_owned(&[], "add6443a-41bd-e414-f6ad-e58d267f4e95"));
+        assert!(!is_agent_owned(&[], "f94c3b30-42be-e959-889c-5aa313dba261"));
     }
 }

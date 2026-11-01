@@ -91,6 +91,8 @@ jobs:
             ($latest | ConvertTo-Json -Depth 6),
             (New-Object System.Text.UTF8Encoding($false))
           )
+          Copy-Item "$dir/$installer" "$dir/Valotrack_x64-setup.exe" -Force
+          Copy-Item "$dir/$installer.sig" "$dir/Valotrack_x64-setup.exe.sig" -Force
 
       - name: Publish release
         shell: pwsh
@@ -106,4 +108,6 @@ jobs:
             --latest `
             "$dir/$installer" `
             "$dir/$installer.sig" `
+            "$dir/Valotrack_x64-setup.exe" `
+            "$dir/Valotrack_x64-setup.exe.sig" `
             "$dir/latest.json"

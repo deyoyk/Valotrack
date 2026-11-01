@@ -2,7 +2,13 @@
 
 A fast, local VALORANT companion for Windows. Live lobby intel, match history, rank trends, collection value, social chat, lineups, crosshairs, sensitivity tools and an ASCII studio in one desktop app. No browser, no terminal.
 
-Built with Tauri 2, Rust and React. All game data is read from your own Riot client and stored on your machine.
+## Download
+
+[![Download the latest release](https://img.shields.io/github/v/release/deyoyk/Valotrack?label=download&style=for-the-badge)](https://github.com/deyoyk/Valotrack/releases/latest)
+
+- [Windows installer — latest](https://github.com/deyoyk/Valotrack/releases/latest/download/Valotrack_x64-setup.exe)
+- [Release notes — latest](https://github.com/deyoyk/Valotrack/releases/latest)
+- [Updater manifest — latest.json](https://github.com/deyoyk/Valotrack/releases/latest/download/latest.json)
 
 ## What's inside
 
@@ -13,20 +19,4 @@ Built with Tauri 2, Rust and React. All game data is read from your own Riot cli
 
 Riot credentials and cookies are never stored. The app uses the already signed-in local Riot client.
 
-## Run
-
-```bash
-npm install
-npm run tauri dev
-```
-
-Build an installer with `npm run tauri build`. Release builds are signed for the built-in updater; set `TAURI_SIGNING_PRIVATE_KEY` to the updater private-key path before bundling.
-
-## Releases
-
-Run the **Release** workflow manually from GitHub Actions. It auto-increments the build number (`v123`, `v124`, ...), builds a signed NSIS installer and publishes `latest.json` for the updater.
-
-Requires Windows 10/11, WebView2, Rust and Node.js. VALORANT must be running for live features.
-
 Community crosshair, lineup, callout, sensitivity and ASCII data plus the .vrf parser come from the open-source Valorant Scout project. Licensed GPL-3.0.
-

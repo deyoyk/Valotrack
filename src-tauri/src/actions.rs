@@ -292,7 +292,7 @@ pub async fn live_instalock(
             })
         }
     };
-    if !owned.iter().any(|id| id.eq_ignore_ascii_case(agent.uuid)) {
+    if !crate::catalog::is_agent_owned(&owned, agent.uuid) {
         return json!({
             "ok": false,
             "message": format!("You don't own {} on this account.", agent.name)

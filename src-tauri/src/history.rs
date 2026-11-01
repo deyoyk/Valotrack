@@ -191,7 +191,10 @@ fn summary(points: &[Value]) -> Value {
             "avgDelta": 0,
             "netRr": 0,
             "kd": Value::Null,
-            "hsPct": Value::Null
+            "hsPct": Value::Null,
+            "maps": [],
+            "streak": Value::Null,
+            "tilt": Value::Null
         });
     }
     let wins = points

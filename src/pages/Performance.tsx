@@ -22,7 +22,7 @@ import { cn, formatDate, formatDateTime, num, pct } from "../lib/format";
 import { Modal } from "../components/Modal";
 
 function TrendChart({ points }: { points: PerformanceData["points"] }) {
-  const rows = useMemo(() => points.slice(-80), [points]);
+  const rows = useMemo(() => (points ?? []).slice(-80), [points]);
   if (rows.length < 2) {
     return (
       <div className="chart-empty">
@@ -308,7 +308,7 @@ export default function Performance() {
               <span className="panel-label">Ranked rating</span>
               <h2>RR trend</h2>
             </div>
-            <span className="chart-range">last {Math.min(80, data?.points.length ?? 0)} games</span>
+            <span className="chart-range">last {Math.min(80, data?.points?.length ?? 0)} games</span>
           </div>
           {hasGames ? <TrendChart points={data?.points ?? []} /> : (
             <div className="chart-empty">
@@ -327,7 +327,7 @@ export default function Performance() {
             </div>
             <BarChart3 size={19} className="panel-icon" />
           </div>
-          {data?.insights.length ? (
+          {data?.insights?.length ? (
             <div className="insight-list">
               {data.insights.map((insight) => (
                 <div className={cn("insight", insight.tone)} key={insight.title}>
@@ -341,7 +341,7 @@ export default function Performance() {
               <span>Insights unlock after 20 ranked games.</span>
             </div>
           )}
-          {summary?.maps.length ? (
+          {summary?.maps?.length ? (
             <div className="map-splits">
               <span className="panel-label">Map splits</span>
               {summary.maps.slice(0, 6).map((map) => (
@@ -369,7 +369,7 @@ export default function Performance() {
             </div>
             <CalendarDays size={19} className="panel-icon" />
           </div>
-          {data?.sessions.length ? (
+          {data?.sessions?.length ? (
             <div className="session-list">
               {data.sessions.slice(0, 6).map((session) => (
                 <div className="session-row" key={session.id}>
@@ -398,7 +398,7 @@ export default function Performance() {
               <span>Sessions group automatically when you play.</span>
             </div>
           )}
-          {manual?.sessions.length ? (
+          {manual?.sessions?.length ? (
             <div className="manual-sessions">
               <span className="panel-label">Tracked sessions</span>
               {manual.sessions.slice(0, 6).map((session) => (
@@ -441,7 +441,7 @@ export default function Performance() {
               <h2>Recent ranked</h2>
             </div>
           </div>
-          {data?.recent.length ? (
+          {data?.recent?.length ? (
             <div className="recent-list">
               {data.recent.slice(0, 10).map((point) => (
                 <div className="recent-row" key={point.matchId}>

@@ -16,6 +16,7 @@ import {
   Wallet,
   WifiOff,
 } from "lucide-react";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { cn } from "./lib/format";
 
 const Live = lazy(() => import("./pages/Live"));
@@ -214,7 +215,9 @@ export default function App() {
             </div>
           }
         >
-          <Page page={page} />
+          <ErrorBoundary key={page}>
+            <Page page={page} />
+          </ErrorBoundary>
         </Suspense>
       </main>
     </div>

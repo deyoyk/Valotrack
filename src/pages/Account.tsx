@@ -15,7 +15,7 @@ import {
   UserRound,
   Wallet,
 } from "lucide-react";
-import { AccountOverview, api } from "../lib/api";
+import { AccountOverview, api, Penalty } from "../lib/api";
 import { rankColor, rankIcon, rankName } from "../lib/rank";
 
 const SOURCES: Record<string, string> = {
@@ -40,6 +40,34 @@ function formatRelative(value: string | null) {
   const hours = Math.floor(diff / 3_600_000);
   const minutes = Math.floor((diff % 3_600_000) / 60_000);
   return `${hours}h ${minutes}m`;
+}
+
+function parsePenaltyDate(value: string | null) {
+  if (!value) return null;
+  const normalized = value.replace(/(\.\d{3})\d+/, "$1");
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function penaltyEffects(penalty: Penalty) {
+  const effects: string[] = [];
+  if (penalty.XPMultiplierEffect) {
+    effects.push(`XP multiplier ${penalty.XPMultiplierEffect.XPMultiplier ?? 0}%`);
+  }
+  if (penalty.QueueRestrictionEffect) effects.push("Matchmaking restriction");
+  if (penalty.QueueDelayEffect) effects.push("Queue delay");
+  if (penalty.RankedRatingPenaltyEffect) effects.push("Ranked rating penalty");
+  if (penalty.PremierRestrictionEffect) effects.push("Premier restriction");
+  if (penalty.RiotRestrictionEffect) effects.push("Riot restriction");
+  if (penalty.GameBanEffect) effects.push("Game ban");
+  if (penalty.WarningEffect) effects.push("Warning");
+  return effects;
+}
+
+function penaltyPlatforms(penalty: Penalty) {
+  if (penalty.ApplyToAllPlatforms) return "All platforms";
+  const values = [...(penalty.ApplyToPlatformGroups ?? []), ...(penalty.ApplyToPlatforms ?? [])];
+  return values.length > 0 ? [...new Set(values)].join(", ") : "PC";
 }
 
 export default function Account() {
@@ -248,7 +276,72 @@ export default function Account() {
                 <AlertTriangle size={19} className="panel-icon" />
               </div>
               {data.penalties.length > 0 ? (
-                <pre className="penalty-json">{JSON.stringify(data.penalties, null, 2)}</pre>
+                <div className="penalty-list">
+                  {data.penalties.map((penalty) => {
+                    const expiry = parsePenaltyDate(penalty.Expiry);
+                    const effects = penaltyEffects(penalty);
+                    return (
+                      <article className="penalty-card" key={penalty.ID || penalty.InfractionID}>
+                        <div className="penalty-head">
+                          <span className="penalty-title">
+                            <AlertTriangle size={15} />
+                            {penalty.IsAutomatedDetection ? "Automated penalty" : "Account penalty"}
+                          </span>
+                          <span className="penalty-games">
+                            {penalty.GamesRemaining > 0
+                              ? `${penalty.GamesRemaining} game${
+                                  penalty.GamesRemaining === 1 ? "" : "s"
+                                } remaining`
+                              : "No game limit"}
+                          </span>
+                        </div>
+                        <div className="penalty-meta">
+                          <div>
+                            <span>Expires</span>
+                            <strong>
+                              {expiry
+                                ? expiry.toLocaleString()
+                                : penalty.Expiry
+                                  ? String(penalty.Expiry)
+                                  : "No expiry"}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Platforms</span>
+                            <strong>{penaltyPlatforms(penalty)}</strong>
+                          </div>
+                          <div>
+                            <span>Issued</span>
+                            <strong>
+                              {penalty.IssuingGameStartUnixMillis
+                                ? formatDate(penalty.IssuingGameStartUnixMillis)
+                                : "Not available"}
+                            </strong>
+                          </div>
+                        </div>
+                        {effects.length > 0 && (
+                          <div className="penalty-effects">
+                            {effects.map((effect) => (
+                              <span className="penalty-effect" key={effect}>
+                                {effect}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {penalty.IssuingMatchID && (
+                          <div className="penalty-match">
+                            <span>Match</span>
+                            <code>{penalty.IssuingMatchID}</code>
+                          </div>
+                        )}
+                        <details className="penalty-details">
+                          <summary>Technical details</summary>
+                          <pre className="penalty-json">{JSON.stringify(penalty, null, 2)}</pre>
+                        </details>
+                      </article>
+                    );
+                  })}
+                </div>
               ) : (
                 <div className="verified-empty">
                   <ShieldCheck size={20} />

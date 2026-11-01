@@ -111,3 +111,16 @@ jobs:
             "$dir/Valotrack_x64-setup.exe" `
             "$dir/Valotrack_x64-setup.exe.sig" `
             "$dir/latest.json"
+
+      - name: Sync version back to main
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "chore: bump version to $env:APP_VERSION"
+            git push origin HEAD:main
+          }

@@ -1391,10 +1391,126 @@
   font-size: 9px;
 }
 
+.penalty-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.penalty-card {
+  padding: 14px;
+  border: 1px solid rgba(232, 180, 90, 0.22);
+  border-radius: 8px;
+  background: rgba(232, 180, 90, 0.04);
+}
+
+.penalty-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.penalty-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #ffd28a;
+  font-family: var(--display);
+  font-size: 18px;
+  text-transform: uppercase;
+}
+
+.penalty-games {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.penalty-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.penalty-meta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.penalty-meta span,
+.penalty-match span {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.penalty-meta strong {
+  overflow: hidden;
+  color: var(--cream);
+  font-size: 10px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.penalty-effects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.penalty-effect {
+  padding: 4px 7px;
+  border: 1px solid rgba(232, 180, 90, 0.24);
+  border-radius: 4px;
+  background: rgba(232, 180, 90, 0.08);
+  color: var(--amber);
+  font-family: var(--mono);
+  font-size: 7.5px;
+  text-transform: uppercase;
+}
+
+.penalty-match {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  min-width: 0;
+}
+
+.penalty-match code {
+  overflow: hidden;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.penalty-details {
+  margin-top: 10px;
+}
+
+.penalty-details summary {
+  color: var(--dim);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
 .penalty-json {
-  max-height: 150px;
+  max-height: 180px;
   overflow: auto;
-  margin: 0;
+  margin: 8px 0 0;
   color: #ac916b;
   font-family: var(--mono);
   font-size: 7px;

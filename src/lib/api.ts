@@ -570,6 +570,33 @@ export type RankInfo = {
   ok: boolean;
 };
 
+export type PenaltyEffect = {
+  XPMultiplier?: number;
+  [key: string]: unknown;
+};
+
+export type Penalty = {
+  ID: string;
+  InfractionID: string;
+  Expiry: string | null;
+  GamesRemaining: number;
+  IsAutomatedDetection: boolean;
+  IssuingGameStartUnixMillis: number | null;
+  IssuingMatchID: string | null;
+  ApplyToAllPlatforms: boolean;
+  ApplyToPlatformGroups: string[];
+  ApplyToPlatforms: string[];
+  XPMultiplierEffect?: PenaltyEffect | null;
+  QueueRestrictionEffect?: unknown | null;
+  QueueDelayEffect?: unknown | null;
+  RankedRatingPenaltyEffect?: unknown | null;
+  PremierRestrictionEffect?: unknown | null;
+  RiotRestrictionEffect?: unknown | null;
+  GameBanEffect?: unknown | null;
+  WarningEffect?: unknown | null;
+  [key: string]: unknown;
+};
+
 export type AccountOverview = {
   available: boolean;
   identity: {
@@ -601,7 +628,7 @@ export type AccountOverview = {
   }[];
   rank: RankInfo;
   wallet: { vp: number; rad: number; kc: number };
-  penalties: unknown[];
+  penalties: Penalty[];
   region: string;
   clientVersion: string;
   accountLabel: string;

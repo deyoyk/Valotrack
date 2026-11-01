@@ -404,6 +404,48 @@ async fn fetch_ranks(
     cached
 }
 
+fn party_lookup(
+    party_sets: HashMap<String, HashSet<String>>,
+    present: &HashSet<String>,
+) -> HashMap<String, Value> {
+    let mut valid_sets: Vec<Vec<String>> = party_sets
+        .into_values()
+        .map(|set| {
+            set.into_iter()
+                .filter(|puuid| present.contains(puuid))
+                .collect::<Vec<_>>()
+        })
+        .filter(|set| set.len() > 1)
+        .collect();
+    valid_sets.sort_by(|a, b| b.len().cmp(&a.len()).then_with(|| a[0].cmp(&b[0])));
+
+    let mut lookup: HashMap<String, Value> = HashMap::new();
+    let mut number = 0usize;
+    for set in valid_sets {
+        let unassigned: Vec<String> = set
+            .into_iter()
+            .filter(|puuid| !lookup.contains_key(puuid))
+            .collect();
+        if unassigned.len() < 2 {
+            continue;
+        }
+        number += 1;
+        let color = PARTY_COLORS[(number - 1) % PARTY_COLORS.len()];
+        for puuid in unassigned {
+            lookup.insert(
+                puuid,
+                json!({
+                    "id": format!("party-{number}"),
+                    "color": color,
+                    "number": number,
+                    "inferred": false
+                }),
+            );
+        }
+    }
+    lookup
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn build_players(
     state: &Arc<AppState>,
@@ -462,33 +504,7 @@ async fn build_players(
     }
 
     let present: HashSet<String> = prepared.iter().map(|p| p.puuid.clone()).collect();
-    let mut valid_sets: Vec<Vec<String>> = party_sets
-        .into_values()
-        .map(|set| {
-            set.into_iter()
-                .filter(|puuid| present.contains(puuid))
-                .collect::<Vec<_>>()
-        })
-        .filter(|set| set.len() > 1)
-        .collect();
-    valid_sets.sort_by(|a, b| b.len().cmp(&a.len()).then_with(|| a[0].cmp(&b[0])));
-    let mut lookup: HashMap<String, Value> = HashMap::new();
-    let mut number = 0usize;
-    for set in valid_sets {
-        number += 1;
-        let color = PARTY_COLORS[(number - 1) % PARTY_COLORS.len()];
-        for puuid in &set {
-            lookup.insert(
-                puuid.clone(),
-                json!({
-                    "id": format!("party-{number}"),
-                    "color": color,
-                    "number": number,
-                    "inferred": false
-                }),
-            );
-        }
-    }
+    let lookup = party_lookup(party_sets, &present);
 
     let mut players = Vec::new();
     for player in prepared {
@@ -1250,5 +1266,81 @@ mod tests {
         let theirs = json!({ "avgRankTier": 10.0, "avgKd": 0.9 });
         let probability = win_probability(&mine, &theirs).unwrap();
         assert!(probability > 50);
+    }
+
+    #[test]
+    fn party_lookup_does_not_split_the_largest_group() {
+        let mut sets = HashMap::new();
+        sets.insert(
+            "own".to_string(),
+            ["a", "b", "c", "d", "e"]
+                .into_iter()
+                .map(str::to_string)
+                .collect(),
+        );
+        sets.insert(
+            "pair-1".to_string(),
+            ["a", "b"].into_iter().map(str::to_string).collect(),
+        );
+        sets.insert(
+            "pair-2".to_string(),
+            ["d", "e"].into_iter().map(str::to_string).collect(),
+        );
+        let present: HashSet<String> =
+            ["a", "b", "c", "d", "e"].into_iter().map(str::to_string).collect();
+
+        let lookup = party_lookup(sets, &present);
+        let ids: HashSet<&str> = lookup
+            .values()
+            .filter_map(|party| party.get("id").and_then(Value::as_str))
+            .collect();
+
+        assert_eq!(lookup.len(), 5);
+        assert_eq!(ids.len(), 1);
+    }
+
+    #[test]
+    fn party_lookup_keeps_disjoint_parties_separate() {
+        let mut sets = HashMap::new();
+        sets.insert(
+            "three".to_string(),
+            ["a", "b", "c"].into_iter().map(str::to_string).collect(),
+        );
+        sets.insert(
+            "two".to_string(),
+            ["d", "e"].into_iter().map(str::to_string).collect(),
+        );
+        let present: HashSet<String> =
+            ["a", "b", "c", "d", "e"].into_iter().map(str::to_string).collect();
+
+        let lookup = party_lookup(sets, &present);
+        let first = lookup.get("a").and_then(|party| party.get("id")).cloned();
+        let second = lookup.get("d").and_then(|party| party.get("id")).cloned();
+
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn party_lookup_skips_groups_that_are_already_covered() {
+        let mut sets = HashMap::new();
+        sets.insert(
+            "largest".to_string(),
+            ["a", "b", "c"].into_iter().map(str::to_string).collect(),
+        );
+        sets.insert(
+            "overlap".to_string(),
+            ["a", "b"].into_iter().map(str::to_string).collect(),
+        );
+        sets.insert(
+            "one-new".to_string(),
+            ["c", "d"].into_iter().map(str::to_string).collect(),
+        );
+        let present: HashSet<String> =
+            ["a", "b", "c", "d"].into_iter().map(str::to_string).collect();
+
+        let lookup = party_lookup(sets, &present);
+
+        assert_eq!(lookup.len(), 3);
+        assert!(!lookup.contains_key("d"));
     }
 }

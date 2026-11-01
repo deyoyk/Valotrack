@@ -6,32 +6,30 @@ use serde_json::Value;
 
 use crate::app::AppState;
 
+pub const DISCORD_APP_ID: &str = "1566350262258499736";
+
 pub fn spawn(state: Arc<AppState>) {
     tauri::async_runtime::spawn(async move {
         let mut client: Option<DiscordIpcClient> = None;
-        let mut client_id = String::new();
         let mut last_activity: Option<String> = None;
         loop {
             let settings = state.settings_snapshot();
-            if !settings.discord_rpc || settings.discord_app_id.trim().is_empty() {
+            if !settings.discord_rpc {
                 if let Some(active) = client.as_mut() {
                     let _ = active.clear_activity();
                 }
                 client = None;
-                client_id.clear();
                 last_activity = None;
                 tokio::time::sleep(Duration::from_secs(15)).await;
                 continue;
             }
-            let app_id = settings.discord_app_id.trim().to_string();
-            if client.is_none() || app_id != client_id {
-                let mut next = DiscordIpcClient::new(&app_id);
+            if client.is_none() {
+                let mut next = DiscordIpcClient::new(DISCORD_APP_ID);
                 if next.connect().is_err() {
                     tokio::time::sleep(Duration::from_secs(20)).await;
                     continue;
                 }
                 client = Some(next);
-                client_id = app_id;
                 last_activity = None;
             }
             let payload = activity_for(&state).await;

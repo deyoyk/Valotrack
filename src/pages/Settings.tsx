@@ -3,7 +3,6 @@ import {
   Check,
   Database,
   Download,
-  ExternalLink,
   Info,
   Loader2,
   RefreshCw,
@@ -11,7 +10,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, Health, Settings as AppSettings } from "../lib/api";
 import { useUpdater } from "../lib/updater";
 
@@ -185,7 +183,9 @@ export default function Settings() {
           <label className="toggle-row">
             <div>
               <strong>Discord Rich Presence</strong>
-              <span>Show your map, agent and score on Discord.</span>
+              <span>
+                Show your map, agent and score using Valotrack's built-in Discord app.
+              </span>
             </div>
             <input
               type="checkbox"
@@ -196,43 +196,6 @@ export default function Settings() {
             />
             <i />
           </label>
-
-          {settings.discordRpc && (
-            <div className="field">
-              <span>Discord application ID</span>
-              <input
-                value={settings.discordAppId}
-                onChange={(event) =>
-                  setSettings({ ...settings, discordAppId: event.target.value.trim() })
-                }
-                placeholder="Paste your Discord app ID"
-              />
-              <small>
-                Paste the Application ID from your own free Discord application. No bot,
-                token, images or downloads are required.
-              </small>
-              <details className="setup-guide">
-                <summary>How to create one</summary>
-                <ol>
-                  <li>Open the Discord Developer Portal and choose “New Application”.</li>
-                  <li>Give it any name, then open General Information.</li>
-                  <li>Copy the Application ID and paste it above.</li>
-                  <li>Turn on Discord Rich Presence, save, and keep Discord open.</li>
-                </ol>
-                <button
-                  type="button"
-                  className="button small"
-                  onClick={() =>
-                    void openUrl("https://discord.com/developers/applications").catch(
-                      () => undefined,
-                    )
-                  }
-                >
-                  Open developer portal <ExternalLink size={13} />
-                </button>
-              </details>
-            </div>
-          )}
 
           <div className="warn-note">
             <Info size={15} />

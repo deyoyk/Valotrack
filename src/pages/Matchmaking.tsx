@@ -167,6 +167,31 @@ export default function Matchmaking() {
     }
   }
 
+  async function enableLiveActions() {
+    if (!settings) return;
+    if (
+      !window.confirm(
+        "Enable live client actions? Valotrack will be able to start and cancel queues, dodge agent select and instalock. This may violate Riot's Terms of Service.",
+      )
+    ) {
+      return;
+    }
+    setBusy("enable");
+    try {
+      const next = await api.saveSettings({ ...settings, allowLiveActions: true });
+      setSettings(next);
+      setDryRun(false);
+      setResult({ ok: true, message: "Live client actions enabled." });
+    } catch (cause) {
+      setResult({
+        ok: false,
+        message: cause instanceof Error ? cause.message : String(cause),
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
   const inQueue = queue?.inQueue === true;
   const queueLabel = queue?.queueName ?? "Competitive";
   const liveActions = settings?.allowLiveActions ?? false;
@@ -220,6 +245,26 @@ export default function Matchmaking() {
 
           {queue?.available ? (
             <>
+              {!liveActions && (
+                <div className="live-actions-note">
+                  <ShieldAlert size={17} />
+                  <div>
+                    <strong>Preview mode</strong>
+                    <span>Queue, dodge and instalock only simulate until live controls are on.</span>
+                  </div>
+                  <button
+                    className="button primary small"
+                    onClick={enableLiveActions}
+                    disabled={busy !== null}
+                  >
+                    {busy === "enable" ? (
+                      <Loader2 size={13} className="spin" />
+                    ) : null}
+                    Enable live
+                  </button>
+                </div>
+              )}
+
               <div className="party-meta">
                 <div>
                   <Users size={14} />
@@ -308,12 +353,17 @@ export default function Matchmaking() {
           <div className="dry-toggle">
             <div>
               <strong>Dry run</strong>
-              <span>Preview actions without touching the client.</span>
+              <span>
+                {liveActions
+                  ? "Preview actions without touching the client."
+                  : "Enable live controls above to use queue actions."}
+              </span>
             </div>
             <label className="mini-switch">
               <input
                 type="checkbox"
                 checked={dryRun}
+                disabled={!liveActions}
                 onChange={(event) => setDryRun(event.target.checked)}
               />
               <i />

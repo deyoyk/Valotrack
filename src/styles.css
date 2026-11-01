@@ -1584,55 +1584,6 @@ button:disabled {
   margin-top: 1px;
 }
 
-.setup-guide {
-  margin-top: 3px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.018);
-}
-
-.setup-guide summary {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 11px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  list-style: none;
-}
-
-.setup-guide summary::-webkit-details-marker {
-  display: none;
-}
-
-.setup-guide summary::before {
-  content: "+";
-  color: var(--red);
-  font-family: var(--mono);
-  font-size: 11px;
-}
-
-.setup-guide[open] summary::before {
-  content: "−";
-}
-
-.setup-guide ol {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0 14px 10px 27px;
-  color: var(--dim);
-  font-size: 10px;
-  line-height: 1.55;
-}
-
-.setup-guide .button {
-  margin: 0 11px 11px;
-}
-
 .update-panel {
   grid-column: 1 / -1;
 }
@@ -1794,6 +1745,40 @@ button:disabled {
 .select-tools h2,
 .instalock-panel h2 {
   font-size: 28px;
+}
+
+.live-actions-note {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(232, 180, 90, 0.2);
+  background: rgba(232, 180, 90, 0.06);
+  border-radius: 7px;
+  color: #c8a970;
+}
+
+.live-actions-note > svg {
+  flex: 0 0 auto;
+}
+
+.live-actions-note > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.live-actions-note strong {
+  color: var(--cream);
+  font-size: 11px;
+}
+
+.live-actions-note span {
+  font-size: 10px;
+  line-height: 1.45;
 }
 
 .party-meta {

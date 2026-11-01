@@ -8,6 +8,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles.css";
+import "./styles-tools.css";
+import "./styles-tools2.css";
+import "./styles-replays.css";
+import "./styles-offline.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

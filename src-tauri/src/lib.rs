@@ -11,6 +11,7 @@ mod history;
 mod instalock;
 mod inventory;
 mod live;
+mod offline;
 mod riot;
 mod valo;
 
@@ -51,6 +52,10 @@ pub fn run() {
             commands::encounters,
             commands::encounter,
             commands::inventory,
+            commands::offline_status,
+            commands::offline_launch,
+            commands::offline_set_status,
+            commands::offline_set_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Valotrack");

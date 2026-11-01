@@ -190,3 +190,32 @@ pub fn encounter(
 pub async fn inventory(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
     crate::inventory::snapshot(state.inner()).await
 }
+
+#[tauri::command]
+pub fn offline_status(state: State<'_, Arc<AppState>>) -> serde_json::Value {
+    state.offline.status()
+}
+
+#[tauri::command]
+pub async fn offline_launch(
+    state: State<'_, Arc<AppState>>,
+    status: Option<String>,
+) -> Result<serde_json::Value, String> {
+    state.offline.launch(status.as_deref()).await
+}
+
+#[tauri::command]
+pub fn offline_set_status(
+    state: State<'_, Arc<AppState>>,
+    status: String,
+) -> Result<serde_json::Value, String> {
+    state.offline.set_status(&status)
+}
+
+#[tauri::command]
+pub fn offline_set_enabled(
+    state: State<'_, Arc<AppState>>,
+    enabled: bool,
+) -> Result<serde_json::Value, String> {
+    state.offline.set_enabled(enabled)
+}

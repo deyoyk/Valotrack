@@ -388,6 +388,17 @@ export type EncounterList = {
   scope: string;
 };
 
+export type OfflineStatus = {
+  running: boolean;
+  active: boolean;
+  connected: boolean;
+  status: string;
+  enabled: boolean;
+  configPort: number | null;
+  chatPort: number | null;
+  message: string;
+};
+
 export const api = {
   health: () => invoke<Health>("health"),
   clientStatus: () => invoke<ClientStatus>("client_status"),
@@ -417,4 +428,17 @@ export const api = {
   encounters: (scope = "current") => invoke<EncounterList>("encounters", { scope }),
   encounter: (puuid: string) => invoke<EncounterPlayer | null>("encounter", { puuid }),
   inventory: () => invoke<Inventory>("inventory"),
+  offlineStatus: () => invoke<OfflineStatus>("offline_status"),
+  offlineLaunch: (status: string) =>
+    invoke<{ ok: boolean; status: string; message: string }>("offline_launch", { status }),
+  offlineSetStatus: (status: string) =>
+    invoke<{ ok: boolean; status: string; enabled: boolean; message: string }>(
+      "offline_set_status",
+      { status },
+    ),
+  offlineSetEnabled: (enabled: boolean) =>
+    invoke<{ ok: boolean; status: string; enabled: boolean; message: string }>(
+      "offline_set_enabled",
+      { enabled },
+    ),
 };

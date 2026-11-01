@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Activity,
   Crosshair,
   Grid3X3,
   Layers,
+  Loader2,
   Map as MapIcon,
   Play,
   Radio,
@@ -12,14 +13,24 @@ import {
   Trophy,
   Users,
   Wallet,
+  WifiOff,
 } from "lucide-react";
 import { cn } from "./lib/format";
-import Collection from "./pages/Collection";
-import Encounters from "./pages/Encounters";
-import Live from "./pages/Live";
-import Matchmaking from "./pages/Matchmaking";
-import Performance from "./pages/Performance";
-import Settings from "./pages/Settings";
+
+const Live = lazy(() => import("./pages/Live"));
+const Matchmaking = lazy(() => import("./pages/Matchmaking"));
+const Performance = lazy(() => import("./pages/Performance"));
+const Encounters = lazy(() => import("./pages/Encounters"));
+const Collection = lazy(() => import("./pages/Collection"));
+const Crosshairs = lazy(() => import("./pages/Crosshairs"));
+const Lineups = lazy(() => import("./pages/Lineups"));
+const Callouts = lazy(() => import("./pages/Callouts"));
+const Strategy = lazy(() => import("./pages/Strategy"));
+const Replays = lazy(() => import("./pages/Replays"));
+const Sensitivity = lazy(() => import("./pages/Sensitivity"));
+const AsciiStudio = lazy(() => import("./pages/AsciiStudio"));
+const Offline = lazy(() => import("./pages/Offline"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 type Page =
   | "live"
@@ -41,7 +52,6 @@ type NavItem = {
   id: Page;
   label: string;
   icon: typeof Radio;
-  soon?: boolean;
 };
 
 const playNav: NavItem[] = [
@@ -53,17 +63,17 @@ const playNav: NavItem[] = [
 ];
 
 const toolsNav: NavItem[] = [
-  { id: "crosshairs", label: "Crosshairs", icon: Crosshair, soon: true },
-  { id: "lineups", label: "Lineups", icon: Layers, soon: true },
-  { id: "callouts", label: "Callouts", icon: MapIcon, soon: true },
-  { id: "strategy", label: "Strategy", icon: Grid3X3, soon: true },
-  { id: "replays", label: "Replays", icon: Play, soon: true },
-  { id: "sensitivity", label: "Sensitivity", icon: Trophy, soon: true },
-  { id: "ascii", label: "ASCII Studio", icon: Radio, soon: true },
+  { id: "crosshairs", label: "Crosshairs", icon: Crosshair },
+  { id: "lineups", label: "Lineups", icon: Layers },
+  { id: "callouts", label: "Callouts", icon: MapIcon },
+  { id: "strategy", label: "Strategy", icon: Grid3X3 },
+  { id: "replays", label: "Replays", icon: Play },
+  { id: "sensitivity", label: "Sensitivity", icon: Trophy },
+  { id: "ascii", label: "ASCII Studio", icon: Radio },
 ];
 
 const systemNav: NavItem[] = [
-  { id: "offline", label: "Appear Offline", icon: Radio, soon: true },
+  { id: "offline", label: "Appear Offline", icon: WifiOff },
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -94,17 +104,49 @@ function NavGroup({
             key={item.id}
             className={cn("nav-item", active === item.id && "active")}
             onClick={() => onSelect(item.id)}
-            disabled={item.soon}
-            title={item.soon ? "Coming online" : item.label}
           >
             <Icon size={17} strokeWidth={1.8} />
             <span>{item.label}</span>
-            {item.soon && <span className="nav-soon">soon</span>}
           </button>
         );
       })}
     </div>
   );
+}
+
+function Page({ page }: { page: Page }) {
+  switch (page) {
+    case "live":
+      return <Live />;
+    case "performance":
+      return <Performance />;
+    case "encounters":
+      return <Encounters />;
+    case "collection":
+      return <Collection />;
+    case "matchmaking":
+      return <Matchmaking />;
+    case "crosshairs":
+      return <Crosshairs />;
+    case "lineups":
+      return <Lineups />;
+    case "callouts":
+      return <Callouts />;
+    case "strategy":
+      return <Strategy />;
+    case "replays":
+      return <Replays />;
+    case "sensitivity":
+      return <Sensitivity />;
+    case "ascii":
+      return <AsciiStudio />;
+    case "offline":
+      return <Offline />;
+    case "settings":
+      return <Settings />;
+    default:
+      return <Live />;
+  }
 }
 
 export default function App() {
@@ -156,12 +198,18 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {page === "live" && <Live />}
-        {page === "performance" && <Performance />}
-        {page === "encounters" && <Encounters />}
-        {page === "collection" && <Collection />}
-        {page === "matchmaking" && <Matchmaking />}
-        {page === "settings" && <Settings />}
+        <Suspense
+          fallback={
+            <div className="page">
+              <div className="center-state">
+                <Loader2 size={18} className="spin" />
+                <span>Loading</span>
+              </div>
+            </div>
+          }
+        >
+          <Page page={page} />
+        </Suspense>
       </main>
     </div>
   );

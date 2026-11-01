@@ -1,0 +1,29 @@
+{
+  "mainAssemblyName": "ValorantReplay.Wasm",
+  "resources": {
+    "hash": "sha256-JF//ee1P1aXBrkomh64rLZE9eF4e/zxLrIbIWACzc0s=",
+    "jsModuleNative": {
+      "dotnet.native.8.0.31.4yd62j7bpg.js": "sha256-zV6ECDszPyTpfzFBpVBIorQItNAmI/38qXeyWMa6IMM="
+    },
+    "jsModuleRuntime": {
+      "dotnet.runtime.8.0.31.lr4nuga6h1.js": "sha256-qzVt86q0GKgDNek5+WFBz2hU8jGxI86YJeZmNGXj/qM="
+    },
+    "wasmNative": {
+      "dotnet.native.wasm": "sha256-+oWzj09QQS1NvZ2RP/1RRKvsxxrXezRH9+fULX2YHjE="
+    },
+    "assembly": {
+      "System.Linq.dll": "sha256-qofsT3+DRXf6Jyo4ogW9ezzZ4umDCB0hakOOSwJs3V0=",
+      "System.Memory.dll": "sha256-v2LYMYtF62RpToLD/MUnHes7lXsxDAKP6vFqsuvUkjY=",
+      "System.Private.CoreLib.dll": "sha256-LCVrhmt5XIy7HoNYUBUtOvTpVAnYhgJ9Lab5MHquQIU=",
+      "System.Runtime.InteropServices.JavaScript.dll": "sha256-G0/kqlkrXrUgWX/23h++MLaaw1QxrkIT/dZiFXJTOT8=",
+      "System.Text.Encodings.Web.dll": "sha256-HtizpsIRR4tDIpzzrMq79Vo2FofJaBQ8tIu3+uK7knA=",
+      "System.Text.Json.dll": "sha256-wv6O7+A5ogLrOGJUhfs4Xi9r58YBh9b4WEeCGOuit5U=",
+      "ValorantReplay.dll": "sha256-O6Gp8QoofLyi5zPZi0sWhfwkNaIBkogTUs0awW/W+/o=",
+      "ValorantReplay.Wasm.dll": "sha256-XC9vE6pMTjf22WbyM28mp+dGnAOkPNET8qWOjxua6Ys="
+    }
+  },
+  "cacheBootResources": true,
+  "debugLevel": 0,
+  "linkerEnabled": true,
+  "globalizationMode": "invariant"
+}

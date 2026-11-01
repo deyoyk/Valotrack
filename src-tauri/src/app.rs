@@ -73,6 +73,7 @@ pub struct AppState {
     pub details: Mutex<HashMap<String, (serde_json::Value, Instant)>>,
     pub meta: Mutex<HashMap<String, serde_json::Value>>,
     pub instalock: Arc<crate::instalock::InstalockState>,
+    pub offline: Arc<crate::offline::OfflineEngine>,
 }
 
 impl AppState {
@@ -91,6 +92,7 @@ impl AppState {
             .build()
             .map_err(|e| e.to_string())?;
         let valo = Valo::new(http.clone());
+        let offline = crate::offline::OfflineEngine::new(&data_dir, http.clone());
         Ok(Self {
             data_dir,
             http: http.clone(),
@@ -104,6 +106,7 @@ impl AppState {
             details: Mutex::new(HashMap::new()),
             meta: Mutex::new(HashMap::new()),
             instalock: Arc::new(crate::instalock::InstalockState::new()),
+            offline,
         })
     }
 

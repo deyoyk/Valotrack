@@ -1,0 +1,231 @@
+.offline-page {
+  padding-bottom: 70px;
+}
+
+.offline-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 24px 28px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 70, 85, 0.18);
+  background:
+    radial-gradient(circle at 12% 50%, rgba(255, 70, 85, 0.08), transparent 40%),
+    var(--panel);
+}
+
+.offline-state {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.offline-orbit {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  color: var(--dim);
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: #090a0d;
+}
+
+.offline-orbit span {
+  position: absolute;
+  border: 1px solid rgba(255, 70, 85, 0.16);
+  border-radius: 50%;
+}
+
+.offline-orbit span:nth-child(1) {
+  inset: -7px;
+}
+
+.offline-orbit span:nth-child(2) {
+  inset: -14px;
+  opacity: 0.5;
+}
+
+.offline-orbit span:nth-child(3) {
+  inset: -21px;
+  opacity: 0.24;
+}
+
+.offline-orbit.active {
+  color: var(--red);
+  border-color: rgba(255, 70, 85, 0.4);
+  box-shadow: 0 0 34px rgba(255, 70, 85, 0.12);
+}
+
+.offline-orbit.active span {
+  border-color: rgba(255, 70, 85, 0.3);
+}
+
+.offline-state h2 {
+  margin: 3px 0 3px;
+  font-family: var(--display);
+  font-size: 36px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.offline-state p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.offline-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.offline-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.visibility-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.visibility-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #0b0d12;
+  text-align: left;
+  transition: border 0.15s ease, background 0.15s ease;
+}
+
+.visibility-card:hover:not(:disabled) {
+  border-color: var(--line-strong);
+}
+
+.visibility-card:disabled {
+  opacity: 0.55;
+}
+
+.visibility-card svg {
+  color: var(--mode-color);
+  margin-bottom: 4px;
+}
+
+.visibility-card strong {
+  font-family: var(--display);
+  font-size: 20px;
+  text-transform: uppercase;
+}
+
+.visibility-card span {
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.visibility-card em {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 6px;
+  text-transform: uppercase;
+  color: var(--mode-color);
+  border: 1px solid color-mix(in srgb, var(--mode-color) 35%, transparent);
+  padding: 2px 4px;
+  border-radius: 2px;
+}
+
+.visibility-card.active {
+  border-color: color-mix(in srgb, var(--mode-color) 45%, transparent);
+  background: color-mix(in srgb, var(--mode-color) 7%, #0b0d12);
+}
+
+.offline-footnote {
+  display: flex;
+  gap: 7px;
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.offline-footnote svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--green);
+}
+
+.offline-how ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.offline-how li {
+  display: flex;
+  gap: 10px;
+}
+
+.offline-how li > span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--muted);
+}
+
+.offline-how li > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.offline-how strong {
+  font-size: 10.5px;
+}
+
+.offline-how p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.offline-how .warn-note {
+  margin-top: 18px;
+}
+
+@media (max-width: 1050px) {
+  .offline-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .offline-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

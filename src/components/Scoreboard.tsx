@@ -49,10 +49,14 @@ function TeamHeader({
   );
 }
 
-function Row({ player, rank }: { player: Player; rank: number }) {
+function Row({ player, rank, onSelect }: { player: Player; rank: number; onSelect?: (player: Player) => void }) {
   const acc = player.kd === null ? null : Math.min(100, Math.max(8, (player.kd / 2.2) * 100));
   return (
-    <button className={cn("player-row", player.isSelf && "self", player.smurf && "flagged")}>
+    <button
+      className={cn("player-row", player.isSelf && "self", player.smurf && "flagged")}
+      onClick={() => onSelect?.(player)}
+      title={`Open ${player.name}'s profile`}
+    >
       <span
         className="party-rail"
         style={{ background: player.party?.color ?? "transparent" }}
@@ -138,10 +142,12 @@ export function Scoreboard({
   board,
   onRefresh,
   refreshing,
+  onPlayer,
 }: {
   board: NonNullable<Awaited<ReturnType<typeof api.liveBoard>>>;
   onRefresh: () => void;
   refreshing: boolean;
+  onPlayer?: (player: Player) => void;
 }) {
   const teams = Object.keys(board.teams ?? {});
   const selfTeam = board.selfTeam || teams[0];
@@ -247,7 +253,12 @@ export function Scoreboard({
                 <span>Skin</span>
               </div>
               {players.map((player, index) => (
-                <Row player={player} rank={index + 1} key={player.puuid} />
+                <Row
+                  player={player}
+                  rank={index + 1}
+                  key={player.puuid}
+                  onSelect={onPlayer}
+                />
               ))}
               {players.some((player) => player.statsPending) && (
                 <div className="stats-pending">

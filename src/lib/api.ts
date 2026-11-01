@@ -165,6 +165,229 @@ export type QueueState = {
   message?: string;
 };
 
+export type CareerMatch = {
+  matchId: string;
+  map: string;
+  mapSplash: string | null;
+  mode: string;
+  startMillis: number;
+  result: "Victory" | "Defeat" | "Draw";
+  team: string;
+  score: number;
+  opponentScore: number | null;
+  agent: string;
+  agentPortrait: string;
+  agentColor: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  kd: number;
+  acs: number;
+  hsPct: number | null;
+  partySize: number;
+  scores: Record<string, number>;
+  teammates: CareerPlayer[];
+  opponents: CareerPlayer[];
+  rrDelta?: number | null;
+  rrAfter?: number | null;
+  rankAfter?: string;
+  rankColor?: string;
+};
+
+export type CareerPlayer = {
+  puuid: string;
+  name: string;
+  rankTier: number;
+  rank: string;
+  rankColor: string;
+  agent: string;
+  agentPortrait: string;
+  agentColor: string;
+  level: number;
+  kills: number;
+  deaths: number;
+  assists: number;
+  acs: number;
+  shotsHit: number;
+  headshots: number;
+};
+
+export type CareerProfile = {
+  source: string;
+  puuid: string;
+  averages: {
+    games: number;
+    wins: number;
+    winRate: number;
+    kills: number;
+    deaths: number;
+    assists: number;
+    kd: number;
+    hsPct: number | null;
+  };
+  coPlayers: {
+    puuid: string;
+    name: string;
+    sharedMatches: number;
+    agents: string[];
+    isParty: boolean;
+  }[];
+  agentPool: {
+    agent: string;
+    games: number;
+    wins: number;
+    winRate: number;
+  }[];
+  mapStats: {
+    map: string;
+    games: number;
+    wins: number;
+    winRate: number;
+  }[];
+  matches: CareerMatch[];
+  encounter?: EncounterPlayer | null;
+};
+
+export type EncounterPlayer = {
+  puuid: string;
+  name: string;
+  withCount: number;
+  againstCount: number;
+  winsWith: number;
+  lossesWith: number;
+  winsAgainst: number;
+  lossesAgainst: number;
+  rank: string | null;
+  rankColor: string | null;
+  peakRank: string | null;
+  level: number;
+  kd: number | null;
+  winRate: number | null;
+  agent: string | null;
+  agentPortrait: string | null;
+  agentColor: string | null;
+  lastSeen: number;
+  lastMatch: string;
+};
+
+export type MatchPlayer = {
+  puuid: string;
+  name: string;
+  team: string;
+  agent: string;
+  agentPortrait: string | null;
+  agentColor: string;
+  kills: number;
+  deaths: number;
+  assists: number;
+  kd: number;
+  acs: number;
+  hsPct: number | null;
+  adr: number | null;
+  firstBloods: number | null;
+  firstDeaths: number | null;
+  multiKills: number | null;
+  aces: number | null;
+  plants: number | null;
+  defuses: number | null;
+  rankTier: number;
+  rank: string;
+  rankColor: string;
+  rankIcon: string | null;
+  rr: number;
+  leaderboard: number;
+  peakRankTier: number;
+  peakRank: string;
+  peakColor: string;
+  peakIcon: string | null;
+  level: number;
+  isSubject?: boolean;
+  isMatchMvp?: boolean;
+  isTeamMvp?: boolean;
+};
+
+export type MatchDetail = {
+  matchId: string;
+  map: string;
+  mapSplash: string | null;
+  mode: string;
+  scores: Record<string, number>;
+  result: string;
+  players: MatchPlayer[];
+  teamStats: Record<
+    string,
+    { avgRankTier: number; avgRank: string; avgRankColor: string; rankIcon: string | null }
+  >;
+  rounds: { n: number; won: boolean; how: string; kills: number; died: boolean }[];
+};
+
+export type Performance = {
+  owner: string | null;
+  accounts: { puuid: string; riotId: string | null; matches: number; lastSeenAt: number }[];
+  points: {
+    matchId: string;
+    ts: number;
+    map: string;
+    result: string;
+    delta: number;
+    tier: number;
+    rr: number;
+  }[];
+  recent: {
+    matchId: string;
+    ts: number;
+    map: string;
+    result: string;
+    delta: number;
+    tier: number;
+    rr: number;
+  }[];
+  summary: {
+    games: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+    avgDelta: number;
+    netRr: number;
+    maps: { map: string; games: number; wins: number; winRate: number; delta: number }[];
+    streak: { type: string; count: number } | null;
+    tilt: { active: boolean; level: string; message: string } | null;
+  };
+  insights: { title: string; text: string; tone: string }[];
+  sessions: {
+    id: string;
+    start: number;
+    end: number;
+    games: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+    netRr: number;
+  }[];
+  rank: string;
+  rankColor: string;
+  rankTier: number;
+  rr: number;
+  currentAccountPuuid?: string | null;
+};
+
+export type Inventory = {
+  available: boolean;
+  totalVp: number;
+  usdApprox: number;
+  wallet: { vp: number; rad: number; kc: number };
+  counts: Record<string, number>;
+  tiers: Record<string, { skins: number; vp: number }>;
+  top: { name: string; icon: string | null; vp: number; tier: string }[];
+  cachedAt: number;
+};
+
+export type EncounterList = {
+  players: EncounterPlayer[];
+  accountCount: number;
+  scope: string;
+};
+
 export const api = {
   health: () => invoke<Health>("health"),
   clientStatus: () => invoke<ClientStatus>("client_status"),
@@ -187,4 +410,11 @@ export const api = {
   ) => invoke<ActionResponse & { running?: boolean }>("instalock_start", { agent, mode, delay, perMap }),
   instalockStop: () => invoke<{ ok: boolean; running: boolean }>("instalock_stop"),
   instalockStatus: () => invoke<InstalockStatus>("instalock_status"),
+  profile: (puuid: string) => invoke<CareerProfile>("profile", { puuid }),
+  matchDetail: (matchId: string, subject?: string) =>
+    invoke<MatchDetail>("match_detail", { matchId, subject }),
+  performance: () => invoke<Performance>("performance"),
+  encounters: (scope = "current") => invoke<EncounterList>("encounters", { scope }),
+  encounter: (puuid: string) => invoke<EncounterPlayer | null>("encounter", { puuid }),
+  inventory: () => invoke<Inventory>("inventory"),
 };

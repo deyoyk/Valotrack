@@ -16,7 +16,14 @@ pub async fn profile(state: &Arc<AppState>, puuid: &str) -> Result<Value, String
         .session(&settings.region)
         .await
         .map_err(|error| error.to_string())?;
-    let value = career(&session, puuid, 8).await?;
+    let mut value = career(&session, puuid, 8).await?;
+    if let Some(matches) = value.get_mut("matches").and_then(Value::as_array_mut) {
+        for row in matches {
+            let map = row.get("map").and_then(Value::as_str).unwrap_or("");
+            row["mapSplash"] = json!(state.valo.map_splash(map).await);
+        }
+    }
+    value["encounter"] = crate::encounters::one(state, None, puuid);
     state.put_json(key, value.clone());
     Ok(value)
 }
@@ -450,7 +457,9 @@ pub async fn match_detail(
     if detail.get("players").is_none() {
         return Err("Match details are unavailable.".into());
     }
-    let value = parse_match_detail(&detail, match_id, subject);
+    let mut value = parse_match_detail(&detail, match_id, subject);
+    let map = value.get("map").and_then(Value::as_str).unwrap_or("");
+    value["mapSplash"] = json!(state.valo.map_splash(map).await);
     state
         .details
         .lock()

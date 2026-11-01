@@ -10,13 +10,17 @@ import {
   ShieldCheck,
   WifiOff,
 } from "lucide-react";
-import { api, Health, LiveBoard } from "../lib/api";
+import { api, CareerMatch, Health, LiveBoard, Player } from "../lib/api";
 import { usePoll } from "../lib/usePoll";
 import { Scoreboard } from "../components/Scoreboard";
+import { ProfileModal } from "../components/ProfileModal";
+import { MatchDetailModal } from "../components/MatchDetailModal";
 
 export default function Live() {
   const [health, setHealth] = useState<Health | null>(null);
   const [board, setBoard] = useState<LiveBoard | null>(null);
+  const [selected, setSelected] = useState<Player | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<CareerMatch | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -160,7 +164,29 @@ export default function Live() {
       )}
 
       {connected && board && (
-        <Scoreboard board={board} onRefresh={() => refresh()} refreshing={refreshing} />
+        <Scoreboard
+          board={board}
+          onRefresh={() => refresh()}
+          refreshing={refreshing}
+          onPlayer={setSelected}
+        />
+      )}
+
+      {selected && (
+        <ProfileModal
+          player={selected}
+          onClose={() => setSelected(null)}
+          onMatch={setSelectedMatch}
+        />
+      )}
+
+      {selectedMatch && (
+        <MatchDetailModal
+          matchId={selectedMatch.matchId}
+          subject={selected?.puuid}
+          title={`${selectedMatch.map} · ${selectedMatch.mode}`}
+          onClose={() => setSelectedMatch(null)}
+        />
       )}
 
       {connected && !board && !loading && (

@@ -4024,6 +4024,96 @@ button:disabled {
   color: var(--dim);
 }
 
+.account-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.owned-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 14px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.owned-card {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 9px;
+  row-gap: 2px;
+  min-width: 0;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #0d1015;
+}
+
+.owned-art {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: var(--panel-2);
+}
+
+.owned-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.owned-art span {
+  font-family: var(--display);
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.owned-card strong {
+  align-self: end;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.owned-card > span {
+  align-self: start;
+  overflow: hidden;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.owned-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  color: var(--dim);
+  font-size: 10px;
+}
+
 .tier-list {
   display: flex;
   flex-direction: column;

@@ -246,8 +246,11 @@ pub fn encounter(
 }
 
 #[tauri::command]
-pub async fn inventory(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
-    crate::inventory::snapshot(state.inner()).await
+pub async fn inventory(
+    state: State<'_, Arc<AppState>>,
+    refresh: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    crate::inventory::snapshot(state.inner(), refresh.unwrap_or(false)).await
 }
 
 #[tauri::command]

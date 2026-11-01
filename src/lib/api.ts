@@ -373,14 +373,26 @@ export type Performance = {
   matchMeta?: Record<string, MatchNote>;
 };
 
+export type OwnedItem = {
+  type: string;
+  uuid: string;
+  name: string;
+  icon: string | null;
+  tier?: string | null;
+  vp?: number | null;
+  earned?: boolean;
+};
+
 export type Inventory = {
   available: boolean;
+  account: string;
   totalVp: number;
   usdApprox: number;
   wallet: { vp: number; rad: number; kc: number };
   counts: Record<string, number>;
   tiers: Record<string, { skins: number; vp: number }>;
   top: { name: string; icon: string | null; vp: number; tier: string }[];
+  owned: OwnedItem[];
   cachedAt: number;
 };
 
@@ -467,7 +479,7 @@ export const api = {
   performance: () => invoke<Performance>("performance"),
   encounters: (scope = "current") => invoke<EncounterList>("encounters", { scope }),
   encounter: (puuid: string) => invoke<EncounterPlayer | null>("encounter", { puuid }),
-  inventory: () => invoke<Inventory>("inventory"),
+  inventory: (refresh = false) => invoke<Inventory>("inventory", { refresh }),
   offlineStatus: () => invoke<OfflineStatus>("offline_status"),
   offlineStart: () => invoke<OfflineStatus>("offline_start"),
   offlineStop: () => invoke<OfflineStatus>("offline_stop"),

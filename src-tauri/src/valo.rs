@@ -439,4 +439,75 @@ impl Valo {
         }
         out
     }
+
+    async fn item_meta(&self, path: &str) -> HashMap<String, Value> {
+        let mut out = HashMap::new();
+        let Some(rows) = self.raw(path).await.and_then(|value| value.as_array().cloned()) else {
+            return out;
+        };
+        for row in rows {
+            let Some(uuid) = row.get("uuid").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(name) = row.get("displayName").and_then(Value::as_str) else {
+                continue;
+            };
+            let icon = row
+                .get("displayIcon")
+                .or_else(|| row.get("fullIcon"))
+                .or_else(|| row.get("smallArt"))
+                .or_else(|| row.get("wideArt"))
+                .and_then(Value::as_str)
+                .map(str::to_string);
+            out.insert(
+                uuid.to_lowercase(),
+                json!({ "name": name, "icon": icon }),
+            );
+        }
+        out
+    }
+
+    pub async fn buddy_meta(&self) -> HashMap<String, Value> {
+        let mut out = HashMap::new();
+        let Some(rows) = self.raw("buddies").await.and_then(|value| value.as_array().cloned()) else {
+            return out;
+        };
+        for row in rows {
+            let Some(name) = row.get("displayName").and_then(Value::as_str) else {
+                continue;
+            };
+            let base_icon = row.get("displayIcon").and_then(Value::as_str);
+            if let Some(levels) = row.get("levels").and_then(Value::as_array) {
+                for level in levels {
+                    let Some(uuid) = level.get("uuid").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    let icon = level
+                        .get("displayIcon")
+                        .and_then(Value::as_str)
+                        .or(base_icon)
+                        .map(str::to_string);
+                    out.insert(
+                        uuid.to_lowercase(),
+                        json!({ "name": name, "icon": icon }),
+                    );
+                }
+            }
+            if let Some(uuid) = row.get("uuid").and_then(Value::as_str) {
+                out.insert(
+                    uuid.to_lowercase(),
+                    json!({ "name": name, "icon": base_icon }),
+                );
+            }
+        }
+        out
+    }
+
+    pub async fn card_meta(&self) -> HashMap<String, Value> {
+        self.item_meta("playercards").await
+    }
+
+    pub async fn spray_meta(&self) -> HashMap<String, Value> {
+        self.item_meta("sprays").await
+    }
 }

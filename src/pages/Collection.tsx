@@ -21,10 +21,10 @@ export default function Collection() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  async function load(quiet = false) {
+  async function load(quiet = false, refresh = false) {
     if (!quiet) setRefreshing(true);
     try {
-      setData(await api.inventory());
+      setData(await api.inventory(refresh));
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -63,7 +63,13 @@ export default function Collection() {
           </p>
         </div>
         <div className="head-status">
-          <button className="button small" onClick={() => load()} disabled={refreshing}>
+          {data?.account && (
+            <span className="account-badge">
+              <span className="dot" />
+              {data.account}
+            </span>
+          )}
+          <button className="button small" onClick={() => load(false, true)} disabled={refreshing}>
             <RefreshCw size={13} className={refreshing ? "spin" : ""} /> Refresh
           </button>
         </div>
@@ -76,7 +82,7 @@ export default function Collection() {
             <strong>Collection unavailable</strong>
             <span>{error}</span>
           </div>
-          <button className="button small" onClick={() => load()}>
+          <button className="button small" onClick={() => load(false, true)}>
             Retry
           </button>
         </div>
@@ -118,6 +124,33 @@ export default function Collection() {
                   </div>
                 ))}
               </div>
+              {(data.owned?.length ?? 0) > 0 ? (
+                <div className="owned-grid">
+                  {data.owned.map((item, index) => (
+                    <div className="owned-card" key={`${item.type}-${item.uuid}-${index}`}>
+                      <div className="owned-art">
+                        {item.icon ? (
+                          <img src={item.icon} alt={item.name} loading="lazy" />
+                        ) : (
+                          <span>{item.name.slice(0, 1).toUpperCase()}</span>
+                        )}
+                      </div>
+                      <strong>{item.name}</strong>
+                      <span>
+                        {item.type === "skin"
+                          ? `${item.tier ?? "Skin"} · ${(item.vp ?? 0).toLocaleString()} VP`
+                          : item.type}
+                        {item.earned ? " · free" : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="owned-empty">
+                  <Diamond size={17} />
+                  <span>No items on this Riot account yet.</span>
+                </div>
+              )}
             </section>
 
             <section className="panel">
@@ -156,17 +189,24 @@ export default function Collection() {
               </div>
             </div>
             <div className="skin-grid">
-              {data.top.map((skin) => (
-                <div className="skin-card" key={`${skin.name}-${skin.vp}`}>
-                  <div className="skin-art">
-                    {skin.icon ? <img src={skin.icon} alt={skin.name} loading="lazy" /> : null}
+              {data.top.length > 0 ? (
+                data.top.map((skin) => (
+                  <div className="skin-card" key={`${skin.name}-${skin.vp}`}>
+                    <div className="skin-art">
+                      {skin.icon ? <img src={skin.icon} alt={skin.name} loading="lazy" /> : null}
+                    </div>
+                    <strong>{skin.name}</strong>
+                    <span>
+                      {skin.tier} · {skin.vp.toLocaleString()} VP
+                    </span>
                   </div>
-                  <strong>{skin.name}</strong>
-                  <span>
-                    {skin.tier} · {skin.vp.toLocaleString()} VP
-                  </span>
+                ))
+              ) : (
+                <div className="owned-empty">
+                  <Diamond size={17} />
+                  <span>No paid weapon skins on this Riot account yet.</span>
                 </div>
-              ))}
+              )}
             </div>
           </section>
         </>
@@ -177,7 +217,7 @@ export default function Collection() {
           </div>
           <h2>Open VALORANT</h2>
           <p>Your collection loads from the signed-in Riot client.</p>
-          <button className="button primary" onClick={() => load()}>
+          <button className="button primary" onClick={() => load(false, true)}>
             <RefreshCw size={14} /> Try again
           </button>
         </div>

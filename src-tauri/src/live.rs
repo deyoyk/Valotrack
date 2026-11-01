@@ -115,11 +115,14 @@ pub async fn board(state: &Arc<AppState>) -> Result<Value, String> {
 }
 
 async fn build(state: &Arc<AppState>, session: Arc<Session>) -> Result<Value, String> {
-    let presences = session
-        .presences()
-        .await
-        .map_err(|error| error.to_string())?;
-    let game_state = session.game_state(&presences);
+    let presences = session.presences().await.unwrap_or_default();
+    let mut game_state = session.game_state(&presences);
+    if game_state == "OFFLINE" && presences.is_empty() {
+        game_state = session
+            .probe_state()
+            .await
+            .map_err(|error| error.to_string())?;
+    }
     if game_state == "MENUS" {
         return build_lobby(state, session.clone(), &presences).await;
     }

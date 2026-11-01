@@ -236,13 +236,22 @@ impl Session {
     }
 
     pub async fn presences(&self) -> Result<Vec<Value>, RiotError> {
-        let data = self.local_get("/chat/v4/presences").await?;
-        let mut presences = data
-            .get("presences")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        if let Some(private) = crate::offline::captured_private() {
+        let data = self.local_get("/chat/v4/presences").await;
+        let captured = crate::offline::captured_private();
+        let mut presences = match data {
+            Ok(data) => data
+                .get("presences")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default(),
+            Err(error) => {
+                if captured.is_none() {
+                    return Err(error);
+                }
+                Vec::new()
+            }
+        };
+        if let Some(private) = captured {
             if let Ok(raw) = serde_json::to_vec(&private) {
                 let encoded = B64.encode(raw);
                 let mut replaced = false;
@@ -330,6 +339,26 @@ impl Session {
         let ally = ally.as_i64().unwrap_or(0);
         let enemy = enemy.as_i64().unwrap_or(0);
         Some(json!({ "ally": ally, "enemy": enemy, "round": ally + enemy + 1 }))
+    }
+
+    pub async fn probe_state(&self) -> Result<String, RiotError> {
+        if let Ok(player) = self
+            .glz_get(&format!("/core-game/v1/players/{}", self.puuid))
+            .await
+        {
+            if player.get("MatchID").and_then(Value::as_str).is_some() {
+                return Ok("INGAME".into());
+            }
+        }
+        if let Ok(player) = self
+            .glz_get(&format!("/pregame/v1/players/{}", self.puuid))
+            .await
+        {
+            if player.get("MatchID").and_then(Value::as_str).is_some() {
+                return Ok("PREGAME".into());
+            }
+        }
+        Ok("MENUS".into())
     }
 
     pub async fn current_match(&self, state: &str) -> Result<Option<CurrentMatch>, RiotError> {
@@ -563,9 +592,10 @@ impl Session {
     }
 
     pub async fn party_snapshot(&self) -> Result<Value, RiotError> {
-        let private = self
-            .self_private(&self.presences().await?)
-            .ok_or_else(|| RiotError::NotReady("no self presence".into()))?;
+        let presences = self.presences().await.unwrap_or_default();
+        let Some(private) = self.self_private(&presences) else {
+            return self.party_snapshot_api().await;
+        };
         let pdata = private.get("partyPresenceData").unwrap_or(&private);
         let Some(party_id) = pdata
             .get("partyId")
@@ -659,15 +689,29 @@ impl Session {
     }
 
     pub async fn own_party_members(&self, presences: &[Value]) -> Vec<Value> {
-        let Some(private) = self.self_private(presences) else {
-            return Vec::new();
+        let party_id = self
+            .self_private(presences)
+            .and_then(|private| {
+                let pdata = private.get("partyPresenceData").unwrap_or(&private);
+                pdata
+                    .get("partyId")
+                    .or_else(|| private.get("partyId"))
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            });
+        let party_id = match party_id {
+            Some(party_id) => Some(party_id),
+            None => self
+                .glz_get(&format!("/parties/v1/players/{}", self.puuid))
+                .await
+                .ok()
+                .and_then(|me| {
+                    me.get("CurrentPartyID")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                }),
         };
-        let pdata = private.get("partyPresenceData").unwrap_or(&private);
-        let Some(party_id) = pdata
-            .get("partyId")
-            .or_else(|| private.get("partyId"))
-            .and_then(Value::as_str)
-        else {
+        let Some(party_id) = party_id else {
             return Vec::new();
         };
         if let Ok(party) = self.glz_get(&format!("/parties/v1/parties/{party_id}")).await {
@@ -678,6 +722,56 @@ impl Session {
                 .unwrap_or_default();
         }
         Vec::new()
+    }
+
+    async fn party_snapshot_api(&self) -> Result<Value, RiotError> {
+        let me = self
+            .glz_get(&format!("/parties/v1/players/{}", self.puuid))
+            .await?;
+        let Some(party_id) = me.get("CurrentPartyID").and_then(Value::as_str) else {
+            return Ok(json!({ "available": false, "message": "Not in a party" }));
+        };
+        let party = self
+            .glz_get(&format!("/parties/v1/parties/{party_id}"))
+            .await?;
+        let members = party
+            .get("Members")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let queue_id = party
+            .get("MatchmakingData")
+            .and_then(|data| data.get("QueueID"))
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .to_lowercase();
+        let state = party.get("State").and_then(Value::as_str).unwrap_or("DEFAULT");
+        let mine = members.iter().find(|member| {
+            member.get("Subject").and_then(Value::as_str) == Some(self.puuid.as_str())
+        });
+        Ok(json!({
+            "available": true,
+            "partyId": party_id,
+            "queueId": if queue_id.is_empty() { Value::Null } else { json!(queue_id) },
+            "queueName": if queue_id.is_empty() { Value::Null } else { json!(catalog::mode_label(&queue_id)) },
+            "eligible": party
+                .get("EligibleQueues")
+                .and_then(Value::as_array)
+                .map(|queues| {
+                    queues
+                        .iter()
+                        .filter_map(Value::as_str)
+                        .map(|queue| json!({ "id": queue, "name": catalog::mode_label(queue) }))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default(),
+            "state": state,
+            "inQueue": state.contains("MATCHMAKING"),
+            "partySize": members.len(),
+            "isOwner": mine.and_then(|member| member.get("IsOwner")).and_then(Value::as_bool).unwrap_or(true),
+            "allReady": members.iter().all(|member| member.get("IsReady").and_then(Value::as_bool).unwrap_or(true)),
+            "queuedAt": Value::Null
+        }))
     }
 }
 

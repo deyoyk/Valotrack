@@ -13,6 +13,10 @@ npm run tauri dev
 
 Build an installer with `npm run tauri build`. Release builds are signed for the built-in updater; set `TAURI_SIGNING_PRIVATE_KEY` to the updater private-key path before bundling.
 
+## Releases
+
+Run the **Release** workflow manually from GitHub Actions. It auto-increments the build number (`v123`, `v124`, ...), builds a signed NSIS installer and publishes `latest.json` for the updater.
+
 Requires Windows 10/11, WebView2, Rust and Node.js. VALORANT must be running for live features.
 
 Community crosshair, lineup, callout, sensitivity and ASCII data plus the .vrf parser come from the open-source Valorant Scout project. Licensed GPL-3.0.

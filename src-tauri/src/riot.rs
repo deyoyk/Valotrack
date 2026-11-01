@@ -156,6 +156,23 @@ impl Session {
     }
 
     pub async fn local_get(&self, path: &str) -> Result<Value, RiotError> {
+        self.local_request(Method::GET, path, None).await
+    }
+
+    pub async fn local_post(&self, path: &str, body: Option<&Value>) -> Result<Value, RiotError> {
+        self.local_request(Method::POST, path, body).await
+    }
+
+    pub async fn local_delete(&self, path: &str, body: Option<&Value>) -> Result<Value, RiotError> {
+        self.local_request(Method::DELETE, path, body).await
+    }
+
+    pub async fn local_request(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&Value>,
+    ) -> Result<Value, RiotError> {
         let mut headers = HeaderMap::new();
         let raw = format!("riot:{}", self.lockfile.password);
         headers.insert(
@@ -164,8 +181,9 @@ impl Session {
                 .map_err(|e| RiotError::Other(e.to_string()))?,
         );
         headers.insert(ACCEPT, HeaderValue::from_static("application/json"));
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         let response = self
-            .execute(Method::GET, self.local_url(path), headers, None, false)
+            .execute(method, self.local_url(path), headers, body, false)
             .await?;
         decode(response).await
     }

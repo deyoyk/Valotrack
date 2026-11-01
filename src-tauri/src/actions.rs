@@ -209,6 +209,17 @@ pub async fn live_instalock(
         return json!({ "ok": false, "message": "Unknown agent." });
     };
     let settings = state.settings_snapshot();
+    let session = match state.riot.session(&settings.region).await {
+        Ok(session) => session,
+        Err(error) => return json!({ "ok": false, "message": error.to_string() }),
+    };
+    let owned = crate::content::owned_ids(&session, crate::content::ITEM_AGENT).await;
+    if !owned.iter().any(|id| id.eq_ignore_ascii_case(agent.uuid)) {
+        return json!({
+            "ok": false,
+            "message": format!("You don't own {} on this account.", agent.name)
+        });
+    }
     if dry_run || !settings.allow_live_actions {
         return json!({
             "ok": true,
@@ -217,10 +228,6 @@ pub async fn live_instalock(
             "message": format!("DRY-RUN: would {mode} {} when agent select opens.", agent.name)
         });
     }
-    let session = match state.riot.session(&settings.region).await {
-        Ok(session) => session,
-        Err(error) => return json!({ "ok": false, "message": error.to_string() }),
-    };
     let Some(match_id) = pregame_match_id(&session).await else {
         return json!({ "ok": false, "message": "Not in agent select." });
     };

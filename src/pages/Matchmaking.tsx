@@ -105,9 +105,14 @@ export default function Matchmaking() {
   }, []);
 
   useEffect(() => {
-    Promise.all([api.agents(), api.settings(), api.instalockStatus()])
+    Promise.all([api.ownedAgents(), api.settings(), api.instalockStatus()])
       .then(([catalog, config, status]) => {
         setAgents(catalog.agents);
+        setSelectedAgent((current) =>
+          catalog.agents.some((agent) => agent.name === current)
+            ? current
+            : catalog.agents[0]?.name ?? "",
+        );
         setSettings(config);
         setInstalock(status);
         setDryRun(!config.allowLiveActions);
@@ -513,6 +518,12 @@ export default function Matchmaking() {
               </button>
             ))}
           </div>
+          {agents.length === 0 && (
+            <div className="owned-empty">
+              <ShieldAlert size={17} />
+              <span>No agents are unlocked on this Riot account.</span>
+            </div>
+          )}
 
           <div className="instalock-options">
             <div className="segmented">
@@ -577,8 +588,8 @@ export default function Matchmaking() {
                 <X size={15} /> Disarm
               </button>
             ) : (
-              <button className="button primary" onClick={arm} disabled={busy !== null}>
-                <Crosshair size={15} /> Arm {selectedAgent}
+              <button className="button primary" onClick={arm} disabled={busy !== null || !selectedAgent}>
+                <Crosshair size={15} /> Arm {selectedAgent || "agent"}
               </button>
             )}
             <button
@@ -586,7 +597,7 @@ export default function Matchmaking() {
               onClick={() =>
                 run("now", () => api.instalockNow(selectedAgent, mode, dryRun))
               }
-              disabled={busy !== null}
+              disabled={busy !== null || !selectedAgent}
             >
               <ZapIcon /> {mode === "lock" ? "Lock now" : "Hover now"}
             </button>

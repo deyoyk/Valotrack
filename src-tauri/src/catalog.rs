@@ -76,6 +76,18 @@ pub fn agents() -> Vec<Agent> {
         .collect()
 }
 
+pub fn agents_owned(owned: &[String]) -> Vec<Agent> {
+    let owned: Vec<String> = owned.iter().map(|id| id.to_lowercase()).collect();
+    agents()
+        .into_iter()
+        .filter(|agent| {
+            owned
+                .iter()
+                .any(|id| id.eq_ignore_ascii_case(agent.uuid))
+        })
+        .collect()
+}
+
 pub fn agents_json() -> serde_json::Value {
     serde_json::json!({ "agents": agents(), "count": AGENTS.len() })
 }

@@ -48,6 +48,39 @@ pub fn agents() -> serde_json::Value {
 }
 
 #[tauri::command]
+pub async fn api_catalog(state: State<'_, Arc<AppState>>) -> Result<serde_json::Value, String> {
+    Ok(crate::api_lab::catalog(state.inner()).await)
+}
+
+#[tauri::command]
+pub async fn api_probe(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+    arg: Option<String>,
+) -> Result<serde_json::Value, String> {
+    crate::api_lab::probe(state.inner(), &id, arg.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn owned_agents(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    let settings = state.settings_snapshot();
+    let session = state
+        .riot
+        .session(&settings.region)
+        .await
+        .map_err(|error| error.to_string())?;
+    let owned = crate::content::owned_ids(&session, crate::content::ITEM_AGENT).await;
+    let agents = crate::catalog::agents_owned(&owned);
+    Ok(serde_json::json!({
+        "agents": agents,
+        "count": agents.len(),
+        "ownedIds": owned
+    }))
+}
+
+#[tauri::command]
 pub fn settings_get(state: State<'_, Arc<AppState>>) -> crate::app::Settings {
     state.settings_snapshot()
 }
@@ -96,24 +129,68 @@ pub async fn instalock_now(
 }
 
 #[tauri::command]
-pub fn instalock_start(
+pub async fn instalock_start(
     state: State<'_, Arc<AppState>>,
     agent: String,
     mode: String,
     delay: f64,
     per_map: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    if state.settings_snapshot().allow_live_actions {
-        state.instalock.start(
+    let settings = state.settings_snapshot();
+    let resolved = crate::catalog::resolve_agent(&agent)
+        .ok_or_else(|| format!("Unknown agent '{agent}'"))?;
+    let session = state
+        .riot
+        .session(&settings.region)
+        .await
+        .map_err(|error| error.to_string())?;
+    let owned = crate::content::owned_ids(&session, crate::content::ITEM_AGENT).await;
+    if !owned
+        .iter()
+        .any(|id| id.eq_ignore_ascii_case(resolved.uuid))
+    {
+        return Err(format!(
+            "You don't own {} on this account.",
+            resolved.name
+        ));
+    }
+    let mut per_map = per_map.unwrap_or_else(|| serde_json::json!({}));
+    let mut ignored = Vec::new();
+    if let Some(entries) = per_map.as_object_mut() {
+        entries.retain(|_, value| {
+            let Some(name) = value.as_str() else {
+                return false;
+            };
+            if name.is_empty() {
+                return false;
+            }
+            let Some(agent) = crate::catalog::resolve_agent(name) else {
+                ignored.push(name.to_string());
+                return false;
+            };
+            if !owned
+                .iter()
+                .any(|id| id.eq_ignore_ascii_case(agent.uuid))
+            {
+                ignored.push(agent.name.to_string());
+                return false;
+            }
+            true
+        });
+    }
+    if settings.allow_live_actions {
+        let mut result = state.instalock.start(
             state.inner().clone(),
-            agent,
+            resolved.name.to_string(),
             mode,
             delay,
-            per_map.unwrap_or_else(|| serde_json::json!({})),
-        )
+            per_map,
+        )?;
+        if !ignored.is_empty() {
+            result["ignoredPerMap"] = serde_json::json!(ignored);
+        }
+        Ok(result)
     } else {
-        let resolved = crate::catalog::resolve_agent(&agent)
-            .ok_or_else(|| format!("Unknown agent '{agent}'"))?;
         Ok(serde_json::json!({
             "ok": true,
             "running": false,
@@ -360,6 +437,48 @@ pub async fn party_join_code(
     dry_run: bool,
 ) -> Result<serde_json::Value, String> {
     crate::party::join_code(state.inner(), &code, dry_run).await
+}
+
+#[tauri::command]
+pub async fn social_snapshot(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::social::snapshot(state.inner()).await
+}
+
+#[tauri::command]
+pub async fn social_messages(
+    state: State<'_, Arc<AppState>>,
+    cid: String,
+) -> Result<serde_json::Value, String> {
+    crate::social::messages(state.inner(), &cid).await
+}
+
+#[tauri::command]
+pub async fn social_send(
+    state: State<'_, Arc<AppState>>,
+    cid: String,
+    message: String,
+    kind: Option<String>,
+) -> Result<serde_json::Value, String> {
+    crate::social::send(state.inner(), &cid, &message, kind.as_deref().unwrap_or("chat")).await
+}
+
+#[tauri::command]
+pub async fn social_send_request(
+    state: State<'_, Arc<AppState>>,
+    name: String,
+    tag: String,
+) -> Result<serde_json::Value, String> {
+    crate::social::send_request(state.inner(), &name, &tag).await
+}
+
+#[tauri::command]
+pub async fn social_remove_request(
+    state: State<'_, Arc<AppState>>,
+    puuid: String,
+) -> Result<serde_json::Value, String> {
+    crate::social::remove_request(state.inner(), &puuid).await
 }
 
 #[tauri::command]

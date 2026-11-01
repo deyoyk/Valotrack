@@ -7,6 +7,7 @@ import {
   Layers,
   Loader2,
   Map as MapIcon,
+  MessageSquare,
   Package,
   Play,
   Radio,
@@ -16,6 +17,7 @@ import {
   ShoppingBag,
   Smartphone,
   Swords,
+  Terminal,
   Trophy,
   UserRound,
   Users,
@@ -29,6 +31,7 @@ import { useUpdater } from "./lib/updater";
 import { displayVersion } from "./lib/version";
 
 const Live = lazy(() => import("./pages/Live"));
+const Social = lazy(() => import("./pages/Social"));
 const Matchmaking = lazy(() => import("./pages/Matchmaking"));
 const Performance = lazy(() => import("./pages/Performance"));
 const Encounters = lazy(() => import("./pages/Encounters"));
@@ -48,9 +51,11 @@ const Loadout = lazy(() => import("./pages/Loadout"));
 const Contracts = lazy(() => import("./pages/Contracts"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Account = lazy(() => import("./pages/Account"));
+const ApiLab = lazy(() => import("./pages/ApiLab"));
 
 type Page =
   | "live"
+  | "social"
   | "performance"
   | "encounters"
   | "collection"
@@ -60,6 +65,7 @@ type Page =
   | "contracts"
   | "leaderboard"
   | "account"
+  | "api"
   | "crosshairs"
   | "lineups"
   | "callouts"
@@ -79,10 +85,12 @@ type NavItem = {
 
 const playNav: NavItem[] = [
   { id: "live", label: "Live", icon: Radio },
+  { id: "social", label: "Social", icon: MessageSquare },
   { id: "performance", label: "Performance", icon: Activity },
   { id: "encounters", label: "Encounters", icon: Users },
   { id: "collection", label: "Collection", icon: Wallet },
   { id: "matchmaking", label: "Matchmaking", icon: Swords },
+  { id: "offline", label: "Appear Offline", icon: WifiOff },
 ];
 
 const armoryNav: NavItem[] = [
@@ -107,8 +115,8 @@ const toolsNav: NavItem[] = [
 ];
 
 const systemNav: NavItem[] = [
-  { id: "offline", label: "Appear Offline", icon: WifiOff },
   { id: "remote", label: "Phone Remote", icon: Smartphone },
+  { id: "api", label: "API Lab", icon: Terminal },
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -153,6 +161,8 @@ function Page({ page }: { page: Page }) {
   switch (page) {
     case "live":
       return <Live />;
+    case "social":
+      return <Social />;
     case "performance":
       return <Performance />;
     case "encounters":
@@ -171,6 +181,8 @@ function Page({ page }: { page: Page }) {
       return <Leaderboard />;
     case "account":
       return <Account />;
+    case "api":
+      return <ApiLab />;
     case "crosshairs":
       return <Crosshairs />;
     case "lineups":
@@ -264,6 +276,10 @@ export default function App() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  useEffect(() => {
+    document.querySelector<HTMLElement>(".main")?.scrollTo({ top: 0 });
+  }, [page]);
 
   function navigate(next: Page) {
     location.hash = next;

@@ -632,6 +632,113 @@ export type PartyDetails = {
   message?: string;
 };
 
+export type SocialPresence = {
+  state: string;
+  product: string;
+  platform: string;
+  map: string | null;
+  queue: string | null;
+  partySize: number;
+  partyId: string | null;
+};
+
+export type SocialFriend = {
+  puuid: string;
+  pid: string | null;
+  gameName: string;
+  tagLine: string;
+  group: string;
+  note: string;
+  online: boolean;
+  lastOnline: number | null;
+  presence: SocialPresence;
+};
+
+export type SocialRequest = {
+  puuid: string;
+  pid: string | null;
+  gameName: string;
+  tagLine: string;
+  subscription: string;
+  note: string;
+};
+
+export type SocialConversation = {
+  cid: string;
+  type: string;
+  unread: number;
+  muted: boolean;
+  directMessages: boolean;
+  participants: { puuid: string; gameName: string; tagLine: string }[];
+};
+
+export type SocialSnapshot = {
+  available: boolean;
+  puuid: string;
+  account: string;
+  friends: SocialFriend[];
+  requests: SocialRequest[];
+  conversations: SocialConversation[];
+};
+
+export type SocialMessage = {
+  body: string;
+  cid: string;
+  game_name: string;
+  game_tag: string;
+  id: string;
+  mid: string;
+  name: string;
+  pid: string;
+  puuid: string;
+  read: boolean;
+  region: string;
+  time: string;
+  type: "chat" | "groupchat";
+};
+
+export type ApiEndpointStatus = "read" | "write" | "reauth" | "realtime" | "legacy";
+
+export type ApiEndpoint = {
+  id: string;
+  label: string;
+  category: string;
+  method: string;
+  path: string;
+  target: string;
+  status: ApiEndpointStatus;
+  feature: string | null;
+  note: string;
+  arg: string | null;
+};
+
+export type ApiCatalog = {
+  endpoints: ApiEndpoint[];
+  context: {
+    available: boolean;
+    account: string | null;
+    puuid: string | null;
+    shard: string | null;
+    region: string | null;
+    glz: string | null;
+    clientVersion: string | null;
+  };
+  count: number;
+  categories: string[];
+};
+
+export type ApiProbeResult = {
+  ok: boolean;
+  status: string;
+  method: string;
+  path: string;
+  target: string;
+  note: string;
+  ms?: number;
+  data?: unknown;
+  error?: string;
+};
+
 export type EncounterList = {
   players: EncounterPlayer[];
   accountCount: number;
@@ -693,6 +800,11 @@ export const api = {
   liveBoard: () => invoke<LiveBoard>("live_board"),
   queueState: () => invoke<QueueState>("queue_state"),
   agents: () => invoke<{ agents: Agent[]; count: number }>("agents"),
+  ownedAgents: () =>
+    invoke<{ agents: Agent[]; count: number; ownedIds: string[] }>("owned_agents"),
+  apiCatalog: () => invoke<ApiCatalog>("api_catalog"),
+  apiProbe: (id: string, arg?: string) =>
+    invoke<ApiProbeResult>("api_probe", { id, arg: arg ?? null }),
   settings: () => invoke<Settings>("settings_get"),
   saveSettings: (settings: Settings) => invoke<Settings>("settings_set", { settings }),
   queueAction: (action: string, queueId: string | null, dryRun: boolean) =>
@@ -760,6 +872,15 @@ export const api = {
       code,
       dryRun,
     }),
+  socialSnapshot: () => invoke<SocialSnapshot>("social_snapshot"),
+  socialMessages: (cid: string) =>
+    invoke<{ messages: SocialMessage[] }>("social_messages", { cid }),
+  socialSend: (cid: string, message: string, kind = "chat") =>
+    invoke<{ messages: SocialMessage[] }>("social_send", { cid, message, kind }),
+  socialSendRequest: (name: string, tag: string) =>
+    invoke<{ requests: unknown[] }>("social_send_request", { name, tag }),
+  socialRemoveRequest: (puuid: string) =>
+    invoke<{ requests: unknown[] }>("social_remove_request", { puuid }),
   offlineStatus: () => invoke<OfflineStatus>("offline_status"),
   offlineStart: () => invoke<OfflineStatus>("offline_start"),
   offlineStop: () => invoke<OfflineStatus>("offline_stop"),

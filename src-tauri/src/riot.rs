@@ -954,6 +954,7 @@ pub struct RiotRuntime {
     http: Client,
     rate: Arc<RateLimiter>,
     cached: Mutex<Option<(Arc<Session>, Instant, String)>>,
+    version_cache: std::sync::Mutex<Option<(Instant, Option<String>)>>,
 }
 
 impl RiotRuntime {
@@ -962,12 +963,35 @@ impl RiotRuntime {
             http,
             rate: Arc::new(RateLimiter::new()),
             cached: Mutex::new(None),
+            version_cache: std::sync::Mutex::new(None),
         }
+    }
+
+    fn client_version_hint(&self) -> Option<String> {
+        if let Ok(cache) = self.version_cache.lock() {
+            if let Some((at, version)) = cache.as_ref() {
+                if at.elapsed() < Duration::from_secs(5) {
+                    return version.clone();
+                }
+            }
+        }
+        let version = game_version_from_log();
+        if let Ok(mut cache) = self.version_cache.lock() {
+            *cache = Some((Instant::now(), version.clone()));
+        }
+        version
     }
 
     pub async fn session(&self, region_override: &str) -> Result<Arc<Session>, RiotError> {
         let lockfile = read_lockfile()?;
-        let key = format!("{}:{}:{}", lockfile.port, lockfile.password, lockfile.pid);
+        let version_hint = self.client_version_hint();
+        let key = format!(
+            "{}:{}:{}:{}",
+            lockfile.port,
+            lockfile.password,
+            lockfile.pid,
+            version_hint.as_deref().unwrap_or("")
+        );
         {
             let cache = self.cached.lock().await;
             if let Some((session, created, cached_key)) = cache.as_ref() {
@@ -1032,7 +1056,7 @@ impl RiotRuntime {
             client_version: String::new(),
             created: Instant::now(),
         };
-        let version = resolve_client_version(&provisional).await;
+        let version = resolve_client_version(&provisional, version_hint.as_deref()).await;
         let mut final_headers = headers;
         if let Ok(value) = HeaderValue::from_str(&version) {
             final_headers.insert("X-Riot-ClientVersion", value);
@@ -1058,7 +1082,38 @@ impl RiotRuntime {
     }
 }
 
-async fn resolve_client_version(session: &Session) -> String {
+fn parse_game_version(text: &str) -> Option<String> {
+    let marker = "CI server version:";
+    let index = text.rfind(marker)?;
+    let version = text[index + marker.len()..]
+        .trim_start()
+        .split_whitespace()
+        .next()
+        .unwrap_or("");
+    version.starts_with("release-").then(|| version.to_string())
+}
+
+fn game_version_from_log() -> Option<String> {
+    let local = std::env::var_os("LOCALAPPDATA")?;
+    let logs = PathBuf::from(local)
+        .join("VALORANT")
+        .join("Saved")
+        .join("Logs");
+    for name in ["ShooterGame.log", "VALORANT.log"] {
+        let Ok(text) = std::fs::read_to_string(logs.join(name)) else {
+            continue;
+        };
+        if let Some(version) = parse_game_version(&text) {
+            return Some(version);
+        }
+    }
+    None
+}
+
+async fn resolve_client_version(session: &Session, hint: Option<&str>) -> String {
+    if let Some(version) = hint.filter(|version| !version.is_empty()) {
+        return version.to_string();
+    }
     if let Ok(value) = session.local_get("/chat/v4/presences").await {
         if let Some(rows) = value.get("presences").and_then(Value::as_array) {
             for presence in rows {
@@ -1367,5 +1422,15 @@ mod tests {
         let value = decode_private(&raw).unwrap();
         assert_eq!(value["sessionLoopState"], "PREGAME");
         assert!(decode_private("not base64").is_none());
+    }
+
+    #[test]
+    fn game_version_parses_shooter_log_line() {
+        let text = "[2026.11.01-11.07.59:691][  0]LogShooter: Display: CI server version: release-13.09-shipping-18-5804228\n";
+        assert_eq!(
+            parse_game_version(text),
+            Some("release-13.09-shipping-18-5804228".to_string())
+        );
+        assert_eq!(parse_game_version("no version here"), None);
     }
 }

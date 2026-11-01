@@ -281,6 +281,75 @@ button:disabled {
   padding: 34px 40px 56px;
 }
 
+.update-banner {
+  position: sticky;
+  top: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 1280px;
+  width: calc(100% - 80px);
+  margin: 18px auto 0;
+  padding: 12px 14px;
+  background:
+    linear-gradient(105deg, rgba(255, 70, 85, 0.13), transparent 52%),
+    rgba(15, 17, 23, 0.96);
+  border: 1px solid rgba(255, 70, 85, 0.24);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(14px);
+}
+
+.update-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 9px;
+  color: var(--red);
+  background: rgba(255, 70, 85, 0.12);
+  border: 1px solid rgba(255, 70, 85, 0.2);
+}
+
+.update-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.update-copy strong {
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.update-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-progress {
+  height: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.update-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--red);
+  transition: width 0.2s ease;
+}
+
 .page-head {
   display: flex;
   align-items: flex-end;
@@ -1351,6 +1420,21 @@ button:disabled {
   outline: none;
 }
 
+.field input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: #0b0d12;
+  color: var(--cream);
+  font-size: 11.5px;
+  outline: none;
+}
+
+.field input:focus {
+  border-color: rgba(255, 70, 85, 0.5);
+}
+
 .field select:focus {
   border-color: rgba(255, 70, 85, 0.5);
 }
@@ -1498,6 +1582,107 @@ button:disabled {
 .warn-note svg {
   flex: 0 0 auto;
   margin-top: 1px;
+}
+
+.setup-guide {
+  margin-top: 3px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.setup-guide summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 11px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.setup-guide summary::-webkit-details-marker {
+  display: none;
+}
+
+.setup-guide summary::before {
+  content: "+";
+  color: var(--red);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.setup-guide[open] summary::before {
+  content: "−";
+}
+
+.setup-guide ol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0 14px 10px 27px;
+  color: var(--dim);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.setup-guide .button {
+  margin: 0 11px 11px;
+}
+
+.update-panel {
+  grid-column: 1 / -1;
+}
+
+.panel-copy {
+  margin: 0 0 15px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.update-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.update-state > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.update-state strong {
+  font-size: 12px;
+}
+
+.update-note {
+  color: var(--dim);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.update-note.error {
+  color: #ff9aa3;
+}
+
+.update-notes {
+  max-height: 110px;
+  overflow: auto;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  line-height: 1.6;
+  white-space: pre-line;
 }
 
 .about-panel p {

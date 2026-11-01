@@ -1,6 +1,19 @@
 import { useEffect, useState } from "react";
-import { Check, Database, Info, Loader2, Save, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import {
+  Check,
+  Database,
+  Download,
+  ExternalLink,
+  Info,
+  Loader2,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+  SlidersHorizontal,
+} from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { api, Health, Settings as AppSettings } from "../lib/api";
+import { useUpdater } from "../lib/updater";
 
 const REGIONS = [
   { id: "", label: "Auto-detect" },
@@ -17,6 +30,22 @@ export default function Settings() {
   const [saved, setSaved] = useState<AppSettings | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const update = useUpdater();
+
+  const updateLine =
+    update.status === "checking"
+      ? "Checking GitHub releases…"
+      : update.status === "available"
+        ? `Version ${update.version} is available.`
+        : update.status === "downloading"
+          ? `Downloading update${update.progress ? ` · ${update.progress}%` : ""}…`
+          : update.status === "ready"
+            ? "Installed. Restart to finish."
+            : update.status === "current"
+              ? "You're on the newest version."
+              : update.status === "error"
+                ? update.error ?? "Couldn't check for updates."
+                : "Automatic checks run every six hours.";
 
   useEffect(() => {
     Promise.all([api.settings(), api.health()]).then(([next, info]) => {
@@ -169,7 +198,7 @@ export default function Settings() {
           </label>
 
           {settings.discordRpc && (
-            <label className="field">
+            <div className="field">
               <span>Discord application ID</span>
               <input
                 value={settings.discordAppId}
@@ -179,10 +208,30 @@ export default function Settings() {
                 placeholder="Paste your Discord app ID"
               />
               <small>
-                Create a free application in the Discord Developer Portal, then paste its
-                Application ID. Rich Presence requires that app to be running locally.
+                Paste the Application ID from your own free Discord application. No bot,
+                token, images or downloads are required.
               </small>
-            </label>
+              <details className="setup-guide">
+                <summary>How to create one</summary>
+                <ol>
+                  <li>Open the Discord Developer Portal and choose “New Application”.</li>
+                  <li>Give it any name, then open General Information.</li>
+                  <li>Copy the Application ID and paste it above.</li>
+                  <li>Turn on Discord Rich Presence, save, and keep Discord open.</li>
+                </ol>
+                <button
+                  type="button"
+                  className="button small"
+                  onClick={() =>
+                    void openUrl("https://discord.com/developers/applications").catch(
+                      () => undefined,
+                    )
+                  }
+                >
+                  Open developer portal <ExternalLink size={13} />
+                </button>
+              </details>
+            </div>
           )}
 
           <div className="warn-note">
@@ -192,6 +241,53 @@ export default function Settings() {
               opt-in and previewable before it runs.
             </span>
           </div>
+        </section>
+
+        <section className="panel update-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="panel-label">Updates</span>
+              <h2>Stay current</h2>
+            </div>
+            <RefreshCw size={20} className="panel-icon" />
+          </div>
+          <p className="panel-copy">
+            Updates are signed and delivered from GitHub releases. Valotrack checks in the
+            background and never installs anything without your click.
+          </p>
+          <div className="update-state">
+            <div>
+              <strong>Version {health?.appVersion ?? "0.1.3"}</strong>
+              <span className={update.status === "error" ? "update-note error" : "update-note"}>
+                {updateLine}
+              </span>
+            </div>
+            {update.status === "available" ? (
+              <button className="button primary" onClick={() => void update.install()}>
+                <Download size={15} /> Install update
+              </button>
+            ) : update.status === "ready" ? (
+              <button className="button primary" onClick={() => void update.restart()}>
+                <RefreshCw size={15} /> Restart now
+              </button>
+            ) : (
+              <button
+                className="button"
+                onClick={() => void update.checkNow()}
+                disabled={update.status === "checking" || update.status === "downloading"}
+              >
+                {update.status === "checking" ? (
+                  <Loader2 size={15} className="spin" />
+                ) : (
+                  <RefreshCw size={15} />
+                )}
+                Check now
+              </button>
+            )}
+          </div>
+          {update.status === "available" && update.notes && (
+            <p className="update-notes">{update.notes}</p>
+          )}
         </section>
 
         <section className="panel about-panel">
@@ -204,7 +300,7 @@ export default function Settings() {
           <dl>
             <div>
               <dt>Version</dt>
-              <dd>{health?.appVersion ?? "0.1.0"}</dd>
+              <dd>{health?.appVersion ?? "0.1.3"}</dd>
             </div>
             <div>
               <dt>Runtime</dt>

@@ -11,7 +11,7 @@ npm install
 npm run tauri dev
 ```
 
-Build an installer with `npm run tauri build`.
+Build an installer with `npm run tauri build`. Release builds are signed for the built-in updater; set `TAURI_SIGNING_PRIVATE_KEY` to the updater private-key path before bundling.
 
 Requires Windows 10/11, WebView2, Rust and Node.js. VALORANT must be running for live features.
 

@@ -1,6 +1,6 @@
 [package]
 name = "valotrack"
-version = "0.1.2"
+version = "0.1.3"
 description = "Fast local VALORANT companion"
 authors = ["Valotrack"]
 edition = "2021"
@@ -41,6 +41,8 @@ rust-embed = "8"
 mime_guess = "2"
 qrcode = "0.14"
 image = { version = "0.25", default-features = false, features = ["png"] }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading"] }

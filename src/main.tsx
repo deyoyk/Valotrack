@@ -7,6 +7,7 @@ import "@fontsource/jetbrains-mono/500.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { UpdaterProvider } from "./lib/updater";
 import "./styles.css";
 import "./styles-tools.css";
 import "./styles-tools2.css";
@@ -15,6 +16,8 @@ import "./styles-offline.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <UpdaterProvider>
+      <App />
+    </UpdaterProvider>
   </StrictMode>,
 );

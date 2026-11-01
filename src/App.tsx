@@ -2,12 +2,14 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Activity,
   Crosshair,
+  Download,
   Grid3X3,
   Layers,
   Loader2,
   Map as MapIcon,
   Play,
   Radio,
+  RefreshCw,
   Settings as SettingsIcon,
   Smartphone,
   Swords,
@@ -15,9 +17,11 @@ import {
   Users,
   Wallet,
   WifiOff,
+  X,
 } from "lucide-react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { cn } from "./lib/format";
+import { useUpdater } from "./lib/updater";
 
 const Live = lazy(() => import("./pages/Live"));
 const Matchmaking = lazy(() => import("./pages/Matchmaking"));
@@ -156,6 +160,66 @@ function Page({ page }: { page: Page }) {
   }
 }
 
+function UpdateBanner() {
+  const update = useUpdater();
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const visible =
+    update.status === "available" ||
+    update.status === "downloading" ||
+    update.status === "ready";
+  if (!visible || dismissed === update.version) return null;
+  const downloading = update.status === "downloading";
+  const ready = update.status === "ready";
+  const line = downloading
+    ? `Downloading update${update.progress ? ` · ${update.progress}%` : ""}`
+    : ready
+      ? "The update is installed. Restart Valotrack to finish."
+      : update.notes?.split("\n")[0]?.trim() || "A new version is ready to install.";
+  return (
+    <div className="update-banner">
+      <div className="update-mark">
+        <Download size={17} />
+      </div>
+      <div className="update-copy">
+        <strong>
+          {ready ? "Update installed" : `Valotrack ${update.version} is available`}
+        </strong>
+        <span>{line}</span>
+        {downloading && (
+          <div className="update-progress">
+            <span style={{ width: `${update.progress ?? 0}%` }} />
+          </div>
+        )}
+      </div>
+      {ready ? (
+        <button className="button primary" onClick={() => void update.restart()}>
+          <RefreshCw size={15} /> Restart now
+        </button>
+      ) : (
+        <button
+          className="button primary"
+          onClick={() => void update.install()}
+          disabled={downloading}
+        >
+          {downloading ? (
+            <Loader2 size={15} className="spin" />
+          ) : (
+            <Download size={15} />
+          )}
+          {downloading ? "Installing" : "Install update"}
+        </button>
+      )}
+      <button
+        className="icon-button"
+        onClick={() => setDismissed(update.version ?? "")}
+        aria-label="Dismiss update"
+      >
+        <X size={15} />
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>(readPage);
 
@@ -205,6 +269,7 @@ export default function App() {
       </aside>
 
       <main className="main">
+        <UpdateBanner />
         <Suspense
           fallback={
             <div className="page">

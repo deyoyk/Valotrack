@@ -420,6 +420,14 @@ export type MatchNote = {
   updatedAt?: number;
 };
 
+export type RemoteInfo = {
+  running: boolean;
+  url?: string;
+  token?: string;
+  port?: number;
+  qrSvg?: string;
+};
+
 export type OfflineStatus = {
   running: boolean;
   active: boolean;
@@ -481,4 +489,6 @@ export const api = {
   matchNote: (matchId: string) => invoke<MatchNote>("match_note", { matchId }),
   matchNoteUpdate: (matchId: string, note: string, tags: string[]) =>
     invoke<MatchNote>("match_note_update", { matchId, note, tags }),
+  remoteStart: () => invoke<RemoteInfo>("remote_start"),
+  remoteInfo: () => invoke<RemoteInfo>("remote_info"),
 };

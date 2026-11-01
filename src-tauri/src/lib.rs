@@ -13,6 +13,7 @@ mod inventory;
 mod live;
 mod match_notes;
 mod offline;
+mod remote;
 mod riot;
 mod sessions;
 mod valo;
@@ -64,6 +65,8 @@ pub fn run() {
             commands::session_delete,
             commands::match_note,
             commands::match_note_update,
+            commands::remote_start,
+            commands::remote_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Valotrack");

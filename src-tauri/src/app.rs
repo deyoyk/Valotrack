@@ -74,6 +74,7 @@ pub struct AppState {
     pub meta: Mutex<HashMap<String, serde_json::Value>>,
     pub instalock: Arc<crate::instalock::InstalockState>,
     pub offline: Arc<crate::offline::OfflineEngine>,
+    pub remote: Arc<crate::remote::RemoteState>,
 }
 
 impl AppState {
@@ -107,6 +108,7 @@ impl AppState {
             meta: Mutex::new(HashMap::new()),
             instalock: Arc::new(crate::instalock::InstalockState::new()),
             offline,
+            remote: Arc::new(crate::remote::RemoteState::new()),
         })
     }
 

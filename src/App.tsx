@@ -9,6 +9,7 @@ import {
   Play,
   Radio,
   Settings as SettingsIcon,
+  Smartphone,
   Swords,
   Trophy,
   Users,
@@ -30,6 +31,7 @@ const Replays = lazy(() => import("./pages/Replays"));
 const Sensitivity = lazy(() => import("./pages/Sensitivity"));
 const AsciiStudio = lazy(() => import("./pages/AsciiStudio"));
 const Offline = lazy(() => import("./pages/Offline"));
+const Remote = lazy(() => import("./pages/Remote"));
 const Settings = lazy(() => import("./pages/Settings"));
 
 type Page =
@@ -46,6 +48,7 @@ type Page =
   | "sensitivity"
   | "ascii"
   | "offline"
+  | "remote"
   | "settings";
 
 type NavItem = {
@@ -74,6 +77,7 @@ const toolsNav: NavItem[] = [
 
 const systemNav: NavItem[] = [
   { id: "offline", label: "Appear Offline", icon: WifiOff },
+  { id: "remote", label: "Phone Remote", icon: Smartphone },
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -142,6 +146,8 @@ function Page({ page }: { page: Page }) {
       return <AsciiStudio />;
     case "offline":
       return <Offline />;
+    case "remote":
+      return <Remote />;
     case "settings":
       return <Settings />;
     default:

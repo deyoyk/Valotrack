@@ -218,6 +218,18 @@ pub fn match_note_update(
 }
 
 #[tauri::command]
+pub async fn remote_start(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::remote::start(state.inner()).await
+}
+
+#[tauri::command]
+pub fn remote_info(state: State<'_, Arc<AppState>>) -> serde_json::Value {
+    state.remote.info()
+}
+
+#[tauri::command]
 pub fn encounters(
     state: State<'_, Arc<AppState>>,
     scope: Option<String>,

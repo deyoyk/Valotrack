@@ -7,13 +7,17 @@ import {
   Layers,
   Loader2,
   Map as MapIcon,
+  Package,
   Play,
   Radio,
   RefreshCw,
+  ScrollText,
   Settings as SettingsIcon,
+  ShoppingBag,
   Smartphone,
   Swords,
   Trophy,
+  UserRound,
   Users,
   Wallet,
   WifiOff,
@@ -22,6 +26,7 @@ import {
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { cn } from "./lib/format";
 import { useUpdater } from "./lib/updater";
+import { displayVersion } from "./lib/version";
 
 const Live = lazy(() => import("./pages/Live"));
 const Matchmaking = lazy(() => import("./pages/Matchmaking"));
@@ -38,6 +43,11 @@ const AsciiStudio = lazy(() => import("./pages/AsciiStudio"));
 const Offline = lazy(() => import("./pages/Offline"));
 const Remote = lazy(() => import("./pages/Remote"));
 const Settings = lazy(() => import("./pages/Settings"));
+const Store = lazy(() => import("./pages/Store"));
+const Loadout = lazy(() => import("./pages/Loadout"));
+const Contracts = lazy(() => import("./pages/Contracts"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Account = lazy(() => import("./pages/Account"));
 
 type Page =
   | "live"
@@ -45,6 +55,11 @@ type Page =
   | "encounters"
   | "collection"
   | "matchmaking"
+  | "store"
+  | "loadout"
+  | "contracts"
+  | "leaderboard"
+  | "account"
   | "crosshairs"
   | "lineups"
   | "callouts"
@@ -70,6 +85,17 @@ const playNav: NavItem[] = [
   { id: "matchmaking", label: "Matchmaking", icon: Swords },
 ];
 
+const armoryNav: NavItem[] = [
+  { id: "store", label: "Store", icon: ShoppingBag },
+  { id: "loadout", label: "Loadout", icon: Package },
+  { id: "contracts", label: "Contracts", icon: ScrollText },
+];
+
+const intelNav: NavItem[] = [
+  { id: "leaderboard", label: "Leaderboard", icon: Trophy },
+  { id: "account", label: "Account", icon: UserRound },
+];
+
 const toolsNav: NavItem[] = [
   { id: "crosshairs", label: "Crosshairs", icon: Crosshair },
   { id: "lineups", label: "Lineups", icon: Layers },
@@ -88,7 +114,7 @@ const systemNav: NavItem[] = [
 
 function readPage(): Page {
   const raw = location.hash.replace("#", "");
-  const all = [...playNav, ...toolsNav, ...systemNav];
+  const all = [...playNav, ...armoryNav, ...intelNav, ...toolsNav, ...systemNav];
   return (all.find((item) => item.id === raw)?.id ?? "live") as Page;
 }
 
@@ -135,6 +161,16 @@ function Page({ page }: { page: Page }) {
       return <Collection />;
     case "matchmaking":
       return <Matchmaking />;
+    case "store":
+      return <Store />;
+    case "loadout":
+      return <Loadout />;
+    case "contracts":
+      return <Contracts />;
+    case "leaderboard":
+      return <Leaderboard />;
+    case "account":
+      return <Account />;
     case "crosshairs":
       return <Crosshairs />;
     case "lineups":
@@ -182,7 +218,7 @@ function UpdateBanner() {
       </div>
       <div className="update-copy">
         <strong>
-          {ready ? "Update installed" : `Valotrack ${update.version} is available`}
+          {ready ? "Update installed" : `Valotrack ${displayVersion(update.version)} is available`}
         </strong>
         <span>{line}</span>
         {downloading && (
@@ -239,14 +275,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
-            <svg viewBox="0 0 64 64" aria-hidden="true">
-              <path d="M8 12 L34 50 L56 50 L56 43 L38 43 L17 12 Z" fill="currentColor" />
-              <path
-                d="M46 12 L31 31 L37 39 L56 15 L56 12 Z"
-                fill="currentColor"
-                opacity="0.82"
-              />
-            </svg>
+            <img src="/logo.svg" alt="Valotrack" />
           </div>
           <div>
             <div className="brand-name">
@@ -258,6 +287,8 @@ export default function App() {
 
         <nav className="nav">
           <NavGroup label="Play" items={playNav} active={page} onSelect={navigate} />
+          <NavGroup label="Armory" items={armoryNav} active={page} onSelect={navigate} />
+          <NavGroup label="Intel" items={intelNav} active={page} onSelect={navigate} />
           <NavGroup label="Tools" items={toolsNav} active={page} onSelect={navigate} />
           <NavGroup label="System" items={systemNav} active={page} onSelect={navigate} />
         </nav>

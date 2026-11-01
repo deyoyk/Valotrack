@@ -3,7 +3,9 @@ import {
   AlertTriangle,
   Check,
   Clock3,
+  Copy,
   Crosshair,
+  Link2,
   Loader2,
   Lock,
   Play,
@@ -12,6 +14,8 @@ import {
   ShieldAlert,
   Swords,
   Timer,
+  Unlock,
+  UserPlus,
   Users,
   X,
 } from "lucide-react";
@@ -20,6 +24,7 @@ import {
   Agent,
   api,
   InstalockStatus,
+  PartyDetails,
   QueueState,
   Settings,
 } from "../lib/api";
@@ -69,6 +74,11 @@ export default function Matchmaking() {
   const [instalock, setInstalock] = useState<InstalockStatus | null>(null);
   const [result, setResult] = useState<ActionResponse | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [party, setParty] = useState<PartyDetails | null>(null);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteTag, setInviteTag] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [partyCode, setPartyCode] = useState("");
 
   const loadQueue = useCallback(async () => {
     try {
@@ -86,6 +96,14 @@ export default function Matchmaking() {
     }
   }, []);
 
+  const loadParty = useCallback(async () => {
+    try {
+      setParty(await api.partyDetails());
+    } catch {
+      setParty(null);
+    }
+  }, []);
+
   useEffect(() => {
     Promise.all([api.agents(), api.settings(), api.instalockStatus()])
       .then(([catalog, config, status]) => {
@@ -99,6 +117,7 @@ export default function Matchmaking() {
 
   usePoll(loadQueue, 5000);
   usePoll(loadStatus, 2000);
+  usePoll(loadParty, 5000);
 
   const eligible = useMemo(() => {
     const valid = new Set((queue?.eligible ?? []).map((item) => item.id));
@@ -182,6 +201,26 @@ export default function Matchmaking() {
       setSettings(next);
       setDryRun(false);
       setResult({ ok: true, message: "Live client actions enabled." });
+    } catch (cause) {
+      setResult({
+        ok: false,
+        message: cause instanceof Error ? cause.message : String(cause),
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function partyAction(
+    label: string,
+    task: () => Promise<{ ok: boolean; message: string; code?: string }>,
+  ) {
+    setBusy(label);
+    try {
+      const response = await task();
+      setResult({ ok: response.ok, message: response.message });
+      if (response.code) setPartyCode(response.code);
+      await loadParty();
     } catch (cause) {
       setResult({
         ok: false,
@@ -558,6 +597,180 @@ export default function Matchmaking() {
           </div>
         </section>
       </div>
+
+      <section className="panel party-advanced">
+        <div className="panel-heading">
+          <div>
+            <span className="panel-label">Party tools</span>
+            <h2>Advanced controls</h2>
+          </div>
+          <Link2 size={19} className="panel-icon" />
+        </div>
+
+        {party?.available ? (
+          <>
+            <div className="party-members">
+              {party.members.map((member) => (
+                <div className="party-member" key={member.puuid}>
+                  <span className="party-member-avatar">
+                    {member.card ? <img src={member.card} alt="" /> : <Users size={16} />}
+                  </span>
+                  <div>
+                    <strong>
+                      {member.name}
+                      {member.tag ? `#${member.tag}` : ""}
+                      {member.isSelf ? " · you" : ""}
+                    </strong>
+                    <span>
+                      {member.isOwner ? "owner · " : ""}
+                      level {member.accountLevel || "?"}
+                      {member.title ? ` · ${member.title}` : ""}
+                    </span>
+                  </div>
+                  <em className={member.isReady ? "ready" : ""}>
+                    {member.isReady ? "ready" : "not ready"}
+                  </em>
+                </div>
+              ))}
+            </div>
+
+            <div className="party-tools-row">
+              <button
+                className="button"
+                onClick={() =>
+                  partyAction("ready", () => api.partyReady(!party.selfReady, dryRun))
+                }
+                disabled={busy !== null}
+              >
+                {busy === "ready" ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
+                {party.selfReady ? "Unready" : "Ready up"}
+              </button>
+              <button
+                className="button"
+                onClick={() =>
+                  partyAction("accessibility", () =>
+                    api.partyAccessibility(party.accessibility !== "OPEN", dryRun),
+                  )
+                }
+                disabled={busy !== null || !party.isOwner}
+              >
+                {party.accessibility === "OPEN" ? <Unlock size={14} /> : <Lock size={14} />}
+                {party.accessibility === "OPEN" ? "Close party" : "Open party"}
+              </button>
+              <span className="queue-note">
+                {party.accessibility === "OPEN" ? "anyone can request" : "invite only"} ·{" "}
+                {dryRun ? "preview" : "live"}
+              </span>
+            </div>
+
+            <div className="party-code-row">
+              <div>
+                <span className="panel-label">Invite code</span>
+                <code>{partyCode || party.inviteCode || "Not generated"}</code>
+              </div>
+              <button
+                className="button small"
+                onClick={() =>
+                  partyAction("code", () => api.partyGenerateCode(dryRun))
+                }
+                disabled={busy !== null}
+              >
+                {busy === "code" ? <Loader2 size={13} className="spin" /> : <RefreshCw size={13} />}
+                Generate
+              </button>
+              <button
+                className="button small"
+                onClick={() => {
+                  const code = partyCode || party.inviteCode;
+                  if (code) {
+                    void navigator.clipboard.writeText(code);
+                    setResult({ ok: true, message: "Invite code copied." });
+                  }
+                }}
+                disabled={!(partyCode || party.inviteCode)}
+              >
+                <Copy size={13} /> Copy
+              </button>
+            </div>
+
+            <div className="party-forms">
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!inviteName.trim() || !inviteTag.trim()) {
+                    setResult({ ok: false, message: "Enter a Riot name and tagline." });
+                    return;
+                  }
+                  void partyAction("invite", () =>
+                    api.partyInvite(inviteName.trim(), inviteTag.trim(), dryRun),
+                  );
+                }}
+              >
+                <span className="field-label">Invite by Riot ID</span>
+                <div>
+                  <input
+                    value={inviteName}
+                    onChange={(event) => setInviteName(event.target.value)}
+                    placeholder="Name"
+                  />
+                  <span>#</span>
+                  <input
+                    value={inviteTag}
+                    onChange={(event) => setInviteTag(event.target.value)}
+                    placeholder="Tag"
+                  />
+                  <button className="button primary" type="submit" disabled={busy !== null}>
+                    <UserPlus size={14} /> Invite
+                  </button>
+                </div>
+              </form>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!joinCode.trim()) return;
+                  void partyAction("join", () => api.partyJoinCode(joinCode.trim(), dryRun));
+                }}
+              >
+                <span className="field-label">Join another party</span>
+                <div>
+                  <input
+                    value={joinCode}
+                    onChange={(event) => setJoinCode(event.target.value)}
+                    placeholder="Paste invite code"
+                  />
+                  <button className="button" type="submit" disabled={busy !== null}>
+                    {busy === "join" ? <Loader2 size={14} className="spin" /> : <Link2 size={14} />}
+                    Join
+                  </button>
+                </div>
+              </form>
+            </div>
+          </>
+        ) : (
+          <div className="party-forms single">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!joinCode.trim()) return;
+                void partyAction("join", () => api.partyJoinCode(joinCode.trim(), dryRun));
+              }}
+            >
+              <span className="field-label">Join a party by invite code</span>
+              <div>
+                <input
+                  value={joinCode}
+                  onChange={(event) => setJoinCode(event.target.value)}
+                  placeholder="Paste invite code"
+                />
+                <button className="button" type="submit" disabled={busy !== null}>
+                  {busy === "join" ? <Loader2 size={14} className="spin" /> : <Link2 size={14} />}
+                  Join
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

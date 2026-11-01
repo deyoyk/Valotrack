@@ -13,6 +13,7 @@ import "./styles-tools.css";
 import "./styles-tools2.css";
 import "./styles-replays.css";
 import "./styles-offline.css";
+import "./styles-advanced.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

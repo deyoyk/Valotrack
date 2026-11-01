@@ -197,6 +197,19 @@ impl Session {
         decode(response).await
     }
 
+    pub async fn pd_post(&self, path: &str, body: Option<&Value>) -> Result<Value, RiotError> {
+        let response = self
+            .execute(
+                Method::POST,
+                self.pd_url(path),
+                self.headers.clone(),
+                body,
+                true,
+            )
+            .await?;
+        decode(response).await
+    }
+
     pub async fn glz_get(&self, path: &str) -> Result<Value, RiotError> {
         for attempt in 0..2 {
             let response = self

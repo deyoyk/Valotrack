@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { api, Health, Settings as AppSettings } from "../lib/api";
 import { useUpdater } from "../lib/updater";
+import { displayVersion } from "../lib/version";
 
 const REGIONS = [
   { id: "", label: "Auto-detect" },
@@ -220,7 +221,7 @@ export default function Settings() {
           </p>
           <div className="update-state">
             <div>
-              <strong>Version {health?.appVersion ?? "0.1.3"}</strong>
+              <strong>Version {displayVersion(health?.appVersion ?? "0.1.5")}</strong>
               <span className={update.status === "error" ? "update-note error" : "update-note"}>
                 {updateLine}
               </span>
@@ -263,7 +264,7 @@ export default function Settings() {
           <dl>
             <div>
               <dt>Version</dt>
-              <dd>{health?.appVersion ?? "0.1.3"}</dd>
+              <dd>{displayVersion(health?.appVersion ?? "0.1.5")}</dd>
             </div>
             <div>
               <dt>Runtime</dt>

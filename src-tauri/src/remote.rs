@@ -182,12 +182,15 @@ async fn action(
     Json(result).into_response()
 }
 
-const MOBILE: &str = r#"<!doctype html>
+const MOBILE: &str = r##"<!doctype html>
 <html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Valotrack Remote</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#08090c;color:#f1ede4;font-family:-apple-system,Segoe UI,sans-serif;padding:14px 12px 90px}
 header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .logo{font-weight:900;letter-spacing:.08em;font-size:14px}.logo span{color:#ff4655}
+.brand{display:flex;align-items:center;gap:8px}
+.mark{display:block;width:28px;height:28px;overflow:hidden;border-radius:5px;background:#fff}
+.mark svg{display:block;width:100%;height:100%}
 .pill{font:10px ui-monospace,monospace;color:#8b93a1;text-transform:uppercase;border:1px solid #ffffff16;border-radius:99px;padding:4px 8px}
 .card{background:#0f1117;border:1px solid #ffffff12;border-radius:8px;padding:11px;margin-bottom:9px}
 .kicker{font:9px ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:#5b6270}
@@ -207,7 +210,7 @@ select{flex:1;background:#141821;color:#f1ede4;border:1px solid #ffffff1a;border
 .empty{color:#8b93a1;font-size:12px;line-height:1.5;text-align:center;padding:26px 12px}
 .toast{position:fixed;left:12px;right:12px;bottom:62px;background:#141821;border:1px solid #ff465544;border-radius:6px;padding:9px;font-size:10px;color:#f1ede4;display:none}
 </style></head><body>
-<header><div class="logo">VALO<span>TRACK</span> <small style="color:#5b6270;font-weight:400">REMOTE</small></div><div id="state" class="pill">connecting</div></header>
+<header><div class="brand"><span class="mark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800"><rect width="800" height="800" fill="#fff"/><path d="M100 110 L100 290 L300 650 L500 650 Z" fill="#000"/><path d="M700 110 L700 290 L560 490 L440 490 Z" fill="#000"/></svg></span><div class="logo">VALO<span>TRACK</span> <small style="color:#5b6270;font-weight:400">REMOTE</small></div></div><div id="state" class="pill">connecting</div></header>
 <main id="app"><div class="empty">Reading the local client…</div></main>
 <div class="toast" id="toast"></div>
 <div class="actions">
@@ -248,4 +251,4 @@ document.getElementById('queue').onclick=()=>act({action:inQueue?'stop':'start'}
 document.getElementById('lock').onclick=()=>act({action:'instalock',agent:document.getElementById('agents').value,mode:'lock'});
 fetch('/api/agents?t='+t).then(r=>r.json()).then(j=>{const s=document.getElementById('agents');s.innerHTML=(j.agents||[]).map(a=>'<option>'+a.name+'</option>').join('')}).catch(()=>{});
 load();setInterval(load,3500);
-</script></body></html>"#;
+</script></body></html>"##;

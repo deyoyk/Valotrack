@@ -254,6 +254,115 @@ pub async fn inventory(
 }
 
 #[tauri::command]
+pub async fn store_snapshot(
+    state: State<'_, Arc<AppState>>,
+    refresh: Option<bool>,
+) -> Result<serde_json::Value, String> {
+    crate::store::snapshot(state.inner(), refresh.unwrap_or(false)).await
+}
+
+#[tauri::command]
+pub async fn loadout_snapshot(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::loadout::snapshot(state.inner()).await
+}
+
+#[tauri::command]
+pub async fn loadout_set_skin(
+    state: State<'_, Arc<AppState>>,
+    weapon_id: String,
+    skin_id: String,
+    dry_run: bool,
+) -> Result<serde_json::Value, String> {
+    crate::loadout::set_skin(state.inner(), &weapon_id, &skin_id, dry_run).await
+}
+
+#[tauri::command]
+pub async fn contracts_snapshot(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::contracts::snapshot(state.inner()).await
+}
+
+#[tauri::command]
+pub async fn contract_activate(
+    state: State<'_, Arc<AppState>>,
+    contract_id: String,
+    dry_run: bool,
+) -> Result<serde_json::Value, String> {
+    crate::contracts::activate(state.inner(), &contract_id, dry_run).await
+}
+
+#[tauri::command]
+pub async fn leaderboard(
+    state: State<'_, Arc<AppState>>,
+    query: Option<String>,
+    size: Option<u32>,
+) -> Result<serde_json::Value, String> {
+    crate::leaderboard::snapshot(state.inner(), query, size).await
+}
+
+#[tauri::command]
+pub async fn account_overview(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::account::snapshot(state.inner()).await
+}
+
+#[tauri::command]
+pub async fn party_details(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::party::details(state.inner()).await
+}
+
+#[tauri::command]
+pub async fn party_ready(
+    state: State<'_, Arc<AppState>>,
+    ready: bool,
+    dry_run: bool,
+) -> Result<serde_json::Value, String> {
+    crate::party::set_ready(state.inner(), ready, dry_run).await
+}
+
+#[tauri::command]
+pub async fn party_accessibility(
+    state: State<'_, Arc<AppState>>,
+    open: bool,
+    dry_run: bool,
+) -> Result<serde_json::Value, String> {
+    crate::party::set_accessibility(state.inner(), open, dry_run).await
+}
+
+#[tauri::command]
+pub async fn party_invite(
+    state: State<'_, Arc<AppState>>,
+    name: String,
+    tag: String,
+    dry_run: bool,
+) -> Result<serde_json::Value, String> {
+    crate::party::invite(state.inner(), &name, &tag, dry_run).await
+}
+
+#[tauri::command]
+pub async fn party_generate_code(
+    state: State<'_, Arc<AppState>>,
+    dry_run: bool,
+) -> Result<serde_json::Value, String> {
+    crate::party::generate_code(state.inner(), dry_run).await
+}
+
+#[tauri::command]
+pub async fn party_join_code(
+    state: State<'_, Arc<AppState>>,
+    code: String,
+    dry_run: bool,
+) -> Result<serde_json::Value, String> {
+    crate::party::join_code(state.inner(), &code, dry_run).await
+}
+
+#[tauri::command]
 pub async fn offline_status(
     state: State<'_, Arc<AppState>>,
 ) -> Result<serde_json::Value, String> {

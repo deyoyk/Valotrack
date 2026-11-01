@@ -396,6 +396,242 @@ export type Inventory = {
   cachedAt: number;
 };
 
+export type StoreItem = {
+  type: string;
+  uuid?: string;
+  name: string;
+  icon: string | null;
+  tier?: string | null;
+  vp?: number | null;
+  cost?: number;
+  currency?: string;
+  discountPercent?: number;
+  owned?: boolean;
+  amount?: number;
+  offerId?: string | null;
+  skinId?: string | null;
+  levelId?: string | null;
+  defaultChromaId?: string | null;
+  chromaId?: string | null;
+  weapon?: string | null;
+  weaponId?: string | null;
+  storefrontItemId?: string;
+  rewards?: StoreItem[];
+};
+
+export type StoreBundle = {
+  id: string;
+  dataAssetId: string;
+  name: string;
+  icon: string | null;
+  items: StoreItem[];
+  baseCost: number;
+  discountedCost: number;
+  discountPercent: number;
+  remaining: number;
+  wholesaleOnly: boolean;
+};
+
+export type StoreSnapshot = {
+  available: boolean;
+  account: string;
+  wallet: { vp: number; rad: number; kc: number };
+  daily: { remaining: number; offers: StoreItem[] };
+  featured: { remaining: number; bundles: StoreBundle[] };
+  nightMarket: { remaining: number; offers: StoreItem[] } | null;
+  accessories: StoreItem[];
+  upgradeCurrency: StoreItem[];
+  fetchedAt: number;
+};
+
+export type OwnedSkin = {
+  skinId: string;
+  levelId: string | null;
+  chromaId: string | null;
+  name: string;
+  icon: string | null;
+  tier: string | null;
+  vp: number | null;
+  weapon: string | null;
+  weaponId: string | null;
+};
+
+export type LoadoutGun = {
+  id: string;
+  weapon: { id: string; name: string; icon: string | null };
+  skin: StoreItem | null;
+  charm: StoreItem | null;
+  skinId: string | null;
+  skinLevelId: string | null;
+  chromaId: string | null;
+};
+
+export type LoadoutSnapshot = {
+  available: boolean;
+  account: string;
+  guns: LoadoutGun[];
+  sprays: { slot: string | null; slotNumber: number; spray: StoreItem }[];
+  identity: {
+    card: StoreItem;
+    title: StoreItem;
+    accountLevel: number;
+    hideAccountLevel: boolean;
+  };
+  incognito: boolean;
+  ownedSkins: OwnedSkin[];
+  version: number;
+};
+
+export type Contract = {
+  id: string;
+  name: string;
+  icon: string | null;
+  relationType: string;
+  relationUuid: string;
+  agent: string | null;
+  level: number;
+  towardsNext: number;
+  totalXp: number;
+  active: boolean;
+};
+
+export type Mission = {
+  id: string;
+  title: string;
+  complete: boolean;
+  expires: string | null;
+  progress: number;
+  target: number;
+  xp: number;
+};
+
+export type ContractsSnapshot = {
+  available: boolean;
+  account: string;
+  activeContract: string;
+  weeklyRefill: string | null;
+  contracts: Contract[];
+  missions: Mission[];
+  recent: {
+    matchId: string;
+    startedAt: number;
+    gamePlayed: number;
+    gameWon: number;
+    roundPlayed: number;
+    roundWon: number;
+  }[];
+  upgradeable: { id: string; item: StoreItem; levels: number; rewardLevels: number }[];
+  upgradeCount: number;
+};
+
+export type LeaderboardPlayer = {
+  puuid: string;
+  gameName: string;
+  tagLine: string;
+  rank: number;
+  rr: number;
+  wins: number;
+  tier: number;
+  tierName: string;
+  tierColor: string;
+  tierIcon: string;
+  card: string | null;
+  title: string | null;
+  isSelf: boolean;
+  isBanned: boolean;
+  isAnonymized: boolean;
+};
+
+export type LeaderboardSnapshot = {
+  available: boolean;
+  season: string;
+  seasonLabel: string | null;
+  region: string;
+  query: string;
+  size: number;
+  totalPlayers: number;
+  tierDetails: Record<string, unknown> | null;
+  players: LeaderboardPlayer[];
+};
+
+export type RankInfo = {
+  tier: number;
+  rr: number;
+  leaderboard: number;
+  peak: number;
+  winRate: number;
+  games: number;
+  previous: number;
+  peakSeason: string;
+  ok: boolean;
+};
+
+export type AccountOverview = {
+  available: boolean;
+  identity: {
+    gameName: string | null;
+    tagLine: string | null;
+    createdAt: number | null;
+    country: string | null;
+    locale: string | null;
+    ageCategory: string | null;
+    state: string | null;
+    accountVerified: boolean;
+    emailVerified: boolean;
+    phoneVerified: boolean;
+    providers: string[];
+    affinity: string | null;
+  };
+  progress: {
+    level: number;
+    xp: number;
+    lastFirstWin: string | null;
+    nextFirstWin: string | null;
+  };
+  history: {
+    matchId: string;
+    startedAt: string;
+    xp: number;
+    level: number | null;
+    sources: { id: string; amount: number }[];
+  }[];
+  rank: RankInfo;
+  wallet: { vp: number; rad: number; kc: number };
+  penalties: unknown[];
+  region: string;
+  clientVersion: string;
+  accountLabel: string;
+};
+
+
+export type PartyMember = {
+  puuid: string;
+  name: string;
+  tag: string;
+  isReady: boolean;
+  isOwner: boolean;
+  tier: number;
+  accountLevel: number;
+  incognito: boolean;
+  card: string | null;
+  title: string;
+  isSelf: boolean;
+};
+
+export type PartyDetails = {
+  available: boolean;
+  partyId?: string;
+  accessibility?: string;
+  inviteCode?: string;
+  state?: string;
+  queueId?: string;
+  eligible?: string[];
+  members: PartyMember[];
+  selfReady?: boolean;
+  isOwner?: boolean;
+  message?: string;
+};
+
 export type EncounterList = {
   players: EncounterPlayer[];
   accountCount: number;
@@ -480,6 +716,50 @@ export const api = {
   encounters: (scope = "current") => invoke<EncounterList>("encounters", { scope }),
   encounter: (puuid: string) => invoke<EncounterPlayer | null>("encounter", { puuid }),
   inventory: (refresh = false) => invoke<Inventory>("inventory", { refresh }),
+  storeSnapshot: (refresh = false) => invoke<StoreSnapshot>("store_snapshot", { refresh }),
+  loadoutSnapshot: () => invoke<LoadoutSnapshot>("loadout_snapshot"),
+  setLoadoutSkin: (weaponId: string, skinId: string, dryRun: boolean) =>
+    invoke<{ ok: boolean; status: string; message: string }>("loadout_set_skin", {
+      weaponId,
+      skinId,
+      dryRun,
+    }),
+  contractsSnapshot: () => invoke<ContractsSnapshot>("contracts_snapshot"),
+  activateContract: (contractId: string, dryRun: boolean) =>
+    invoke<{ ok: boolean; status: string; message: string }>("contract_activate", {
+      contractId,
+      dryRun,
+    }),
+  leaderboard: (query = "", size = 100) =>
+    invoke<LeaderboardSnapshot>("leaderboard", { query, size }),
+  accountOverview: () => invoke<AccountOverview>("account_overview"),
+  partyDetails: () => invoke<PartyDetails>("party_details"),
+  partyReady: (ready: boolean, dryRun: boolean) =>
+    invoke<{ ok: boolean; status: string; message: string }>("party_ready", {
+      ready,
+      dryRun,
+    }),
+  partyAccessibility: (open: boolean, dryRun: boolean) =>
+    invoke<{ ok: boolean; status: string; message: string }>("party_accessibility", {
+      open,
+      dryRun,
+    }),
+  partyInvite: (name: string, tag: string, dryRun: boolean) =>
+    invoke<{ ok: boolean; status: string; message: string }>("party_invite", {
+      name,
+      tag,
+      dryRun,
+    }),
+  partyGenerateCode: (dryRun: boolean) =>
+    invoke<{ ok: boolean; status: string; message: string; code?: string }>(
+      "party_generate_code",
+      { dryRun },
+    ),
+  partyJoinCode: (code: string, dryRun: boolean) =>
+    invoke<{ ok: boolean; status: string; message: string }>("party_join_code", {
+      code,
+      dryRun,
+    }),
   offlineStatus: () => invoke<OfflineStatus>("offline_status"),
   offlineStart: () => invoke<OfflineStatus>("offline_start"),
   offlineStop: () => invoke<OfflineStatus>("offline_stop"),

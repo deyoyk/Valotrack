@@ -117,6 +117,13 @@ impl Valo {
         Some(value)
     }
 
+    pub async fn list(&self, path: &str) -> Vec<Value> {
+        self.raw(path)
+            .await
+            .and_then(|value| value.as_array().cloned())
+            .unwrap_or_default()
+    }
+
     pub async fn rank_icons(&self) -> HashMap<i32, (Option<String>, Option<String>)> {
         let mut out = HashMap::new();
         let Some(sets) = self.raw("competitivetiers").await else {

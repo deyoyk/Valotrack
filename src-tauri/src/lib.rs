@@ -2,22 +2,29 @@
 #![recursion_limit = "256"]
 
 mod actions;
+mod account;
 mod app;
 mod career;
 mod catalog;
 mod commands;
+mod content;
+mod contracts;
 mod discord;
 mod encounters;
 mod history;
 mod instalock;
 mod inventory;
+mod leaderboard;
 mod live;
+mod loadout;
 mod match_notes;
 mod offline;
 mod offline_client;
+mod party;
 mod remote;
 mod riot;
 mod sessions;
+mod store;
 mod valo;
 
 use std::sync::Arc;
@@ -71,6 +78,19 @@ pub fn run() {
             commands::encounters,
             commands::encounter,
             commands::inventory,
+            commands::store_snapshot,
+            commands::loadout_snapshot,
+            commands::loadout_set_skin,
+            commands::contracts_snapshot,
+            commands::contract_activate,
+            commands::leaderboard,
+            commands::account_overview,
+            commands::party_details,
+            commands::party_ready,
+            commands::party_accessibility,
+            commands::party_invite,
+            commands::party_generate_code,
+            commands::party_join_code,
             commands::offline_status,
             commands::offline_start,
             commands::offline_stop,

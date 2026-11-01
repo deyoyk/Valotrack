@@ -26,7 +26,9 @@ import lineupMeta from "../data/lineup-meta.json";
 import abilityRadii from "../data/ability-radii.json";
 import mapScale from "../data/map-scale.json";
 import { copyText } from "../lib/clipboard";
+import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import { cn } from "../lib/format";
+import { promptText } from "../lib/prompt";
 
 type Ability = { name: string; icon: string; key: string };
 type AgentKit = {
@@ -205,7 +207,7 @@ export default function Strategy() {
     });
   }
 
-  function clickMap(event: ReactPointerEvent) {
+  async function clickMap(event: ReactPointerEvent) {
     if (tool === "circle") {
       const start = point(event);
       const distance = abilityRadius(abilityName, scale);
@@ -226,7 +228,12 @@ export default function Strategy() {
     }
     if (tool === "text") {
       const start = point(event);
-      const text = window.prompt("Label");
+      const text = await promptText({
+        title: "Add a label",
+        label: "Map text",
+        placeholder: "A site, rotate, smoke here…",
+        confirmLabel: "Add label",
+      });
       if (!text?.trim()) return;
       const object: PlanObject = {
         id: uid(),
@@ -288,8 +295,12 @@ export default function Strategy() {
     dragRef.current = null;
   }
 
-  function savePlan() {
-    const name = window.prompt("Name this strat", `${map} ${side} ${agent.name}`);
+  async function savePlan() {
+    const name = await promptText({
+      title: "Name this strat",
+      label: "Strat name",
+      defaultValue: `${map} ${side} ${agent.name}`,
+    });
     if (!name) return;
     const plan: Plan = {
       map,
@@ -313,9 +324,14 @@ export default function Strategy() {
     setMessage(`Loaded ${plan.name}.`);
   }
 
-  function clear() {
+  async function clear() {
     if (!objects.length) return;
-    if (window.confirm("Clear this board?")) {
+    if (
+      await confirmDialog("Clear this board?", {
+        title: "Clear strategy board",
+        kind: "warning",
+      })
+    ) {
       setObjects([]);
       setSelected(null);
     }
@@ -331,7 +347,12 @@ export default function Strategy() {
   }
 
   async function importPlan() {
-    const raw = window.prompt("Paste a Valotrack plan code");
+    const raw = await promptText({
+      title: "Import a Valotrack plan",
+      label: "Plan code",
+      placeholder: "Paste a plan code",
+      confirmLabel: "Import",
+    });
     if (!raw) return;
     try {
       const parsed = JSON.parse(decodeURIComponent(escape(atob(raw.trim()))));
@@ -368,7 +389,7 @@ export default function Strategy() {
             <button className="button small" onClick={share}>
               <Download size={13} /> Share code
             </button>
-            <button className="button small primary" onClick={savePlan}>
+            <button className="button small primary" onClick={() => void savePlan()}>
               <Save size={13} /> Save strat
             </button>
           </div>
@@ -539,7 +560,7 @@ export default function Strategy() {
                   <Trash2 size={12} /> Remove
                 </button>
               )}
-              <button className="button small" onClick={clear}>
+              <button className="button small" onClick={() => void clear()}>
                 Clear board
               </button>
             </div>
@@ -548,7 +569,7 @@ export default function Strategy() {
             className="strategy-map"
             ref={mapRef}
             onPointerDown={(event) => {
-              clickMap(event);
+              void clickMap(event);
               startDraw(event);
             }}
             onPointerMove={moveDraw}

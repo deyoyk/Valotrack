@@ -2072,6 +2072,31 @@ button:disabled {
   margin: 0 0 16px;
 }
 
+.select-live-note {
+  margin: 0 0 14px;
+}
+
+.select-result {
+  margin: 12px 0 0;
+}
+
+.select-result em {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 7px;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.agents-empty {
+  flex-wrap: wrap;
+}
+
+.agents-empty .button {
+  margin-left: 4px;
+}
+
 .safety-list {
   display: flex;
   flex-direction: column;
@@ -2179,6 +2204,15 @@ button:disabled {
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.owned-note {
+  margin: -6px 0 12px;
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .search-box {
@@ -4581,4 +4615,74 @@ button:disabled {
   font-family: var(--mono);
   font-size: 9px;
   color: var(--dim);
+}
+
+.prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 5, 8, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.prompt-card {
+  width: min(420px, calc(100vw - 40px));
+  padding: 22px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.03), transparent 60%),
+    var(--panel);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+}
+
+.prompt-card > strong {
+  display: block;
+  margin-bottom: 14px;
+  color: var(--cream);
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.prompt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.prompt-field > span {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.prompt-field input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: #0b0d12;
+  color: var(--cream);
+  font-size: 11px;
+  outline: none;
+}
+
+.prompt-field input:focus {
+  border-color: rgba(255, 70, 85, 0.5);
+}
+
+.prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }

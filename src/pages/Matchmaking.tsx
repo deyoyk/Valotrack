@@ -1,4 +1,5 @@
 import { type CSSProperties, useCallback, useEffect, useMemo, useState } from "react";
+import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import {
   AlertTriangle,
   Check,
@@ -62,6 +63,8 @@ const ROLES = ["Duelist", "Initiator", "Controller", "Sentinel"] as const;
 export default function Matchmaking() {
   const [queue, setQueue] = useState<QueueState | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentsError, setAgentsError] = useState<string | null>(null);
+  const [ownedAccount, setOwnedAccount] = useState<string | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [selectedAgent, setSelectedAgent] = useState("Jett");
   const [search, setSearch] = useState("");
@@ -73,6 +76,7 @@ export default function Matchmaking() {
   const [dryRun, setDryRun] = useState(true);
   const [instalock, setInstalock] = useState<InstalockStatus | null>(null);
   const [result, setResult] = useState<ActionResponse | null>(null);
+  const [selectResult, setSelectResult] = useState<ActionResponse | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [party, setParty] = useState<PartyDetails | null>(null);
   const [inviteName, setInviteName] = useState("");
@@ -104,21 +108,32 @@ export default function Matchmaking() {
     }
   }, []);
 
+  const loadAgents = useCallback(async () => {
+    try {
+      const catalog = await api.ownedAgents();
+      setAgents(catalog.agents);
+      setOwnedAccount(catalog.account);
+      setAgentsError(null);
+      setSelectedAgent((current) =>
+        catalog.agents.some((agent) => agent.name === current)
+          ? current
+          : catalog.agents[0]?.name ?? "",
+      );
+    } catch (cause) {
+      setAgentsError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }, []);
+
   useEffect(() => {
-    Promise.all([api.ownedAgents(), api.settings(), api.instalockStatus()])
-      .then(([catalog, config, status]) => {
-        setAgents(catalog.agents);
-        setSelectedAgent((current) =>
-          catalog.agents.some((agent) => agent.name === current)
-            ? current
-            : catalog.agents[0]?.name ?? "",
-        );
+    void loadAgents();
+    Promise.all([api.settings(), api.instalockStatus()])
+      .then(([config, status]) => {
         setSettings(config);
         setInstalock(status);
         setDryRun(!config.allowLiveActions);
       })
       .catch(() => void 0);
-  }, []);
+  }, [loadAgents]);
 
   usePoll(loadQueue, 5000);
   usePoll(loadStatus, 2000);
@@ -146,14 +161,17 @@ export default function Matchmaking() {
     try {
       const response = await task();
       setResult(response);
+      if (label === "dodge" || label === "side") setSelectResult(response);
       if (response.queue) setQueue(response.queue);
       else void loadQueue();
       void loadStatus();
     } catch (cause) {
-      setResult({
+      const failure = {
         ok: false,
         message: cause instanceof Error ? cause.message : String(cause),
-      });
+      };
+      setResult(failure);
+      if (label === "dodge" || label === "side") setSelectResult(failure);
     } finally {
       setBusy(null);
     }
@@ -193,11 +211,11 @@ export default function Matchmaking() {
 
   async function enableLiveActions() {
     if (!settings) return;
-    if (
-      !window.confirm(
-        "Enable live client actions? Valotrack will be able to start and cancel queues, dodge agent select and instalock. This may violate Riot's Terms of Service.",
-      )
-    ) {
+    const confirmed = await confirmDialog(
+      "Enable live client actions? Valotrack will be able to start and cancel queues, dodge agent select and instalock. This may violate Riot's Terms of Service.",
+      { title: "Enable live client actions", kind: "warning" },
+    );
+    if (!confirmed) {
       return;
     }
     setBusy("enable");
@@ -214,6 +232,17 @@ export default function Matchmaking() {
     } finally {
       setBusy(null);
     }
+  }
+
+  async function requestDodge() {
+    if (!dryRun) {
+      const confirmed = await confirmDialog(
+        "Dodge this agent select? This can trigger a Riot queue restriction.",
+        { title: "Dodge agent select", kind: "warning" },
+      );
+      if (!confirmed) return;
+    }
+    void run("dodge", () => api.dodge(dryRun));
   }
 
   async function partyAction(
@@ -426,6 +455,22 @@ export default function Matchmaking() {
           <p className="tool-copy">
             Read which side you start on, or dodge the lobby before the round begins.
           </p>
+          {!liveActions && (
+            <div className="live-actions-note select-live-note">
+              <ShieldAlert size={16} />
+              <div>
+                <strong>Preview mode</strong>
+                <span>Dodge only simulates until live controls are on.</span>
+              </div>
+              <button
+                className="button primary small"
+                onClick={() => void enableLiveActions()}
+                disabled={busy !== null}
+              >
+                Enable live
+              </button>
+            </div>
+          )}
           <div className="tool-buttons">
             <button
               className="button"
@@ -436,16 +481,24 @@ export default function Matchmaking() {
             </button>
             <button
               className="button danger"
-              onClick={() => {
-                if (window.confirm("Dodge this agent select?")) {
-                  void run("dodge", () => api.dodge(dryRun));
-                }
-              }}
+              onClick={() => void requestDodge()}
               disabled={busy !== null}
             >
-              <X size={15} /> Dodge
+              {busy === "dodge" ? (
+                <Loader2 size={15} className="spin" />
+              ) : (
+                <X size={15} />
+              )}
+              Dodge
             </button>
           </div>
+          {selectResult && (
+            <div className={cn("action-result select-result", selectResult.ok ? "ok" : "error")}>
+              {selectResult.ok ? <Check size={15} /> : <AlertTriangle size={15} />}
+              <span>{selectResult.message}</span>
+              {selectResult.phase && <em>{selectResult.phase}</em>}
+            </div>
+          )}
           <div className="safety-list">
             <div>
               <Lock size={13} />
@@ -479,6 +532,11 @@ export default function Matchmaking() {
             </div>
           )}
 
+          <p className="owned-note">
+            Owned by {ownedAccount ?? "this Riot account"} · {agents.length}{" "}
+            {agents.length === 1 ? "agent" : "agents"}
+          </p>
+
           <div className="agent-toolbar">
             <div className="search-box">
               <Search size={14} />
@@ -502,6 +560,14 @@ export default function Matchmaking() {
                 </button>
               ))}
             </div>
+            <button
+              className="icon-button"
+              onClick={() => void loadAgents()}
+              title="Refresh owned agents"
+              disabled={busy !== null}
+            >
+              <RefreshCw size={13} />
+            </button>
           </div>
 
           <div className="agent-grid">
@@ -519,9 +585,16 @@ export default function Matchmaking() {
             ))}
           </div>
           {agents.length === 0 && (
-            <div className="owned-empty">
-              <ShieldAlert size={17} />
-              <span>No agents are unlocked on this Riot account.</span>
+            <div className="owned-empty agents-empty">
+              {agentsError ? <AlertTriangle size={17} /> : <ShieldAlert size={17} />}
+              <span>
+                {agentsError
+                  ? `Could not load owned agents: ${agentsError}`
+                  : "No owned agents were returned for this Riot account."}
+              </span>
+              <button className="button small" onClick={() => void loadAgents()}>
+                Retry
+              </button>
             </div>
           )}
 

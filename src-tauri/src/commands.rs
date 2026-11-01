@@ -57,12 +57,15 @@ pub async fn owned_agents(
         .session(&settings.region)
         .await
         .map_err(|error| error.to_string())?;
-    let owned = crate::content::owned_ids(&session, crate::content::ITEM_AGENT).await;
+    let owned = crate::content::owned_ids_result(&session, crate::content::ITEM_AGENT)
+        .await
+        .map_err(|error| format!("Could not load owned agents: {error}"))?;
     let agents = crate::catalog::agents_owned(&owned);
     Ok(serde_json::json!({
         "agents": agents,
         "count": agents.len(),
-        "ownedIds": owned
+        "ownedIds": owned,
+        "account": crate::content::account_label(&session).await
     }))
 }
 
@@ -130,7 +133,9 @@ pub async fn instalock_start(
         .session(&settings.region)
         .await
         .map_err(|error| error.to_string())?;
-    let owned = crate::content::owned_ids(&session, crate::content::ITEM_AGENT).await;
+    let owned = crate::content::owned_ids_result(&session, crate::content::ITEM_AGENT)
+        .await
+        .map_err(|error| format!("Could not verify agent ownership: {error}"))?;
     if !owned
         .iter()
         .any(|id| id.eq_ignore_ascii_case(resolved.uuid))

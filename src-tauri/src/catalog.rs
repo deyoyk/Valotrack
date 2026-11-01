@@ -240,4 +240,16 @@ mod tests {
         );
         assert!(resolve_agent("missing").is_none());
     }
+
+    #[test]
+    fn owned_agents_keep_only_matching_ids() {
+        let owned = vec![
+            "A3BFB853-43B2-7238-A4F1-AD90E9E46BCC".to_string(),
+            "not-an-agent".to_string(),
+        ];
+        let agents = agents_owned(&owned);
+        assert_eq!(agents.len(), 1);
+        assert_eq!(agents[0].name, "Reyna");
+        assert!(agents_owned(&[]).is_empty());
+    }
 }

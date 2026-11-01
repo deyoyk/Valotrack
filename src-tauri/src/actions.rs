@@ -143,19 +143,89 @@ pub async fn dodge(state: &Arc<AppState>, dry_run: bool) -> Value {
         Ok(session) => session,
         Err(error) => return json!({ "ok": false, "message": error.to_string() }),
     };
-    match pregame_match_id(&session).await {
-        Some(match_id) => match session
-            .glz_post(&format!("/pregame/v1/matches/{match_id}/quit"), None)
-            .await
-        {
-            Ok(response) if response.status().is_success() => {
-                json!({ "ok": true, "status": "dodged", "message": "Dodged agent select." })
+    let presences = session.presences().await.unwrap_or_default();
+    let phase = session.game_state(&presences);
+    let player = match session
+        .glz_get(&format!("/pregame/v1/players/{}", session.puuid))
+        .await
+    {
+        Ok(player) => player,
+        Err(error) => {
+            return json!({
+                "ok": false,
+                "status": "lookup-failed",
+                "phase": phase,
+                "message": format!("Could not read agent select: {error}")
+            })
+        }
+    };
+    let Some(match_id) = player
+        .get("MatchID")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty())
+    else {
+        return json!({
+            "ok": false,
+            "status": "not-in-pregame",
+            "phase": phase,
+            "message": if phase == "PREGAME" {
+                "Agent select is active, but Riot did not return a match ID. Try again in a moment.".to_string()
+            } else {
+                format!("Not in agent select (current phase: {phase}).")
             }
-            Ok(response) => json!({ "ok": false, "message": format!("Riot refused the dodge (HTTP {}).", response.status()) }),
-            Err(error) => json!({ "ok": false, "message": error.to_string() }),
-        },
-        None => json!({ "ok": false, "message": "Not in agent select (nothing to dodge)." }),
+        });
+    };
+    let path = format!("/pregame/v1/matches/{match_id}/quit");
+    let first = quit_pregame(&session, &path, Some(&json!({}))).await;
+    let attempt = match first {
+        Ok((status, detail)) if (200..=299).contains(&status) => Ok((status, detail)),
+        Ok((status, detail)) if (400..=422).contains(&status) => {
+            match quit_pregame(&session, &path, None).await {
+                Ok(retry) => Ok(retry),
+                Err(_) => Ok((status, detail)),
+            }
+        }
+        other => other,
+    };
+    match attempt {
+        Ok((status, _)) if (200..300).contains(&status) => json!({
+            "ok": true,
+            "status": "dodged",
+            "phase": phase,
+            "matchId": match_id,
+            "message": "Dodged agent select."
+        }),
+        Ok((status, detail)) => json!({
+            "ok": false,
+            "status": "refused",
+            "phase": phase,
+            "matchId": match_id,
+            "httpStatus": status,
+            "detail": detail,
+            "message": format!("Riot refused the dodge (HTTP {status}).")
+        }),
+        Err(error) => json!({
+            "ok": false,
+            "status": "request-failed",
+            "phase": phase,
+            "matchId": match_id,
+            "message": format!("Dodge request failed: {error}")
+        }),
     }
+}
+
+async fn quit_pregame(
+    session: &Session,
+    path: &str,
+    body: Option<&Value>,
+) -> Result<(u16, String), String> {
+    let response = session
+        .glz_post(path, body)
+        .await
+        .map_err(|error| error.to_string())?;
+    let status = response.status().as_u16();
+    let text = response.text().await.unwrap_or_default();
+    Ok((status, text.chars().take(240).collect()))
 }
 
 pub async fn check_side(state: &Arc<AppState>) -> Value {
@@ -213,7 +283,15 @@ pub async fn live_instalock(
         Ok(session) => session,
         Err(error) => return json!({ "ok": false, "message": error.to_string() }),
     };
-    let owned = crate::content::owned_ids(&session, crate::content::ITEM_AGENT).await;
+    let owned = match crate::content::owned_ids_result(&session, crate::content::ITEM_AGENT).await {
+        Ok(owned) => owned,
+        Err(error) => {
+            return json!({
+                "ok": false,
+                "message": format!("Could not verify agent ownership: {error}")
+            })
+        }
+    };
     if !owned.iter().any(|id| id.eq_ignore_ascii_case(agent.uuid)) {
         return json!({
             "ok": false,

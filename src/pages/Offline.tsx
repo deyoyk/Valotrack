@@ -1,4 +1,5 @@
 import { type CSSProperties, useCallback, useEffect, useState } from "react";
+import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import {
   AlertTriangle,
   Check,
@@ -79,11 +80,11 @@ export default function Offline() {
   }
 
   async function stop() {
-    if (
-      !window.confirm(
-        "Stop the offline relay? Riot chat will disconnect until you launch through it again.",
-      )
-    ) {
+    const confirmed = await confirmDialog(
+      "Stop the offline relay? Riot chat will disconnect until you launch through it again.",
+      { title: "Stop offline relay", kind: "warning" },
+    );
+    if (!confirmed) {
       return;
     }
     setBusy("stop");
@@ -99,11 +100,11 @@ export default function Offline() {
   }
 
   async function launch() {
-    if (
-      !window.confirm(
-        "Launch VALORANT through the offline relay? This closes the running Riot Client and game first.",
-      )
-    ) {
+    const confirmed = await confirmDialog(
+      "Launch VALORANT through the offline relay? This closes the running Riot Client and game first.",
+      { title: "Launch through offline relay", kind: "warning" },
+    );
+    if (!confirmed) {
       return;
     }
     setBusy("launch");

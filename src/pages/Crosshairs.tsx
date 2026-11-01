@@ -17,6 +17,7 @@ import {
 } from "../lib/crosshair";
 import { copyText } from "../lib/clipboard";
 import { cn } from "../lib/format";
+import { promptText } from "../lib/prompt";
 import { CrosshairPreview, SCENES } from "../components/CrosshairPreview";
 import { Modal } from "../components/Modal";
 
@@ -621,9 +622,13 @@ export default function Crosshairs() {
         <BuilderModal
           initial={builder}
           onClose={() => setBuilder(null)}
-          onSaveFavorite={(code) => {
-            const name = window.prompt("Name this crosshair", "Custom crosshair");
-            if (!name?.trim()) return;
+          onSaveFavorite={async (code) => {
+            const name = await promptText({
+              title: "Name this crosshair",
+              label: "Crosshair name",
+              defaultValue: "Custom crosshair",
+            });
+            if (!name) return;
             const entry: Entry = {
               id: -Date.now(),
               name: name.trim().slice(0, 60),

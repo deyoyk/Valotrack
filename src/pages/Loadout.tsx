@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import {
   AlertTriangle,
   Check,
@@ -53,11 +54,11 @@ export default function Loadout() {
 
   async function enableLiveActions() {
     if (!settings) return;
-    if (
-      !window.confirm(
-        "Enable live client actions? This lets Valotrack save loadout changes to Riot. It may violate Riot's Terms of Service.",
-      )
-    ) {
+    const confirmed = await confirmDialog(
+      "Enable live client actions? This lets Valotrack save loadout changes to Riot. It may violate Riot's Terms of Service.",
+      { title: "Enable live client actions", kind: "warning" },
+    );
+    if (!confirmed) {
       return;
     }
     setBusy("enable");

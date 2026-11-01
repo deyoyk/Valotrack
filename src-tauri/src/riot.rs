@@ -633,7 +633,7 @@ impl Session {
             .or_else(|| private.get("partyId"))
             .and_then(Value::as_str)
         else {
-            return Ok(json!({ "available": false, "message": "Not in a party" }));
+            return self.party_snapshot_api().await;
         };
         let queue_id = private
             .get("queueId")
@@ -701,9 +701,13 @@ impl Session {
                         .and_then(Value::as_bool)
                         .unwrap_or(false));
                 }
+                return Ok(snapshot);
             }
         }
-        Ok(snapshot)
+        match self.party_snapshot_api().await {
+            Ok(api) => Ok(api),
+            Err(_) => Ok(snapshot),
+        }
     }
 
     pub async fn own_party_subjects(&self, presences: &[Value]) -> Vec<String> {

@@ -137,6 +137,10 @@ export type ActionResponse = {
   side?: string;
   map?: string;
   agent?: string;
+  phase?: string;
+  matchId?: string;
+  detail?: string;
+  httpStatus?: number;
 };
 
 export type InstalockStatus = {
@@ -759,7 +763,9 @@ export const api = {
   queueState: () => invoke<QueueState>("queue_state"),
   agents: () => invoke<{ agents: Agent[]; count: number }>("agents"),
   ownedAgents: () =>
-    invoke<{ agents: Agent[]; count: number; ownedIds: string[] }>("owned_agents"),
+    invoke<{ agents: Agent[]; count: number; ownedIds: string[]; account: string }>(
+      "owned_agents",
+    ),
   settings: () => invoke<Settings>("settings_get"),
   saveSettings: (settings: Settings) => invoke<Settings>("settings_set", { settings }),
   queueAction: (action: string, queueId: string | null, dryRun: boolean) =>

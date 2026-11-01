@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use serde_json::{json, Value};
 
@@ -312,23 +312,65 @@ impl ItemIndex {
     }
 }
 
-pub async fn owned_ids(session: &Session, item_type: &str) -> Vec<String> {
-    session
-        .pd_get(&format!(
-            "/store/v1/entitlements/{}/{}",
-            session.puuid, item_type
-        ))
+fn parse_item_ids(rows: &[Value]) -> Vec<String> {
+    rows.iter()
+        .filter_map(|row| row.get("ItemID").and_then(Value::as_str))
+        .map(str::to_lowercase)
+        .collect()
+}
+
+pub async fn owned_ids_result(session: &Session, item_type: &str) -> Result<Vec<String>, String> {
+    let path = format!("/store/v1/entitlements/{}/{}", session.puuid, item_type);
+    let mut last_error = None;
+    for attempt in 0..2 {
+        match session.pd_get(&path).await {
+            Ok(value) => {
+                if let Some(rows) = value.get("Entitlements").and_then(Value::as_array) {
+                    let ids = parse_item_ids(rows);
+                    if !ids.is_empty() {
+                        return Ok(ids);
+                    }
+                    break;
+                }
+                last_error = Some("Riot returned no entitlement list.".to_string());
+            }
+            Err(error) => last_error = Some(error.to_string()),
+        }
+        if attempt == 0 {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+    }
+
+    if let Ok(value) = session
+        .pd_get(&format!("/store/v1/entitlements/{}", session.puuid))
         .await
-        .ok()
-        .and_then(|value| value.get("Entitlements").cloned())
-        .and_then(|value| value.as_array().cloned())
-        .map(|rows| {
-            rows.iter()
-                .filter_map(|row| row.get("ItemID").and_then(Value::as_str))
-                .map(str::to_lowercase)
-                .collect()
-        })
-        .unwrap_or_default()
+    {
+        if let Some(groups) = value.get("EntitlementsByTypes").and_then(Value::as_array) {
+            if let Some(group) = groups.iter().find(|group| {
+                group
+                    .get("ItemTypeID")
+                    .and_then(Value::as_str)
+                    .map(|id| id.eq_ignore_ascii_case(item_type))
+                    .unwrap_or(false)
+            }) {
+                let rows = group
+                    .get("Entitlements")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                return Ok(parse_item_ids(&rows));
+            }
+        }
+    }
+
+    match last_error {
+        Some(error) => Err(error),
+        None => Ok(Vec::new()),
+    }
+}
+
+pub async fn owned_ids(session: &Session, item_type: &str) -> Vec<String> {
+    owned_ids_result(session, item_type).await.unwrap_or_default()
 }
 
 pub async fn account_label(session: &Session) -> String {
@@ -408,5 +450,18 @@ mod tests {
         let item = index.resolve(ITEM_SKIN, "missing");
         assert_eq!(item["type"], "skin");
         assert_eq!(item["name"], "Item");
+    }
+
+    #[test]
+    fn item_ids_are_lowercased_and_filtered() {
+        let rows = vec![
+            json!({ "ItemID": "A3BFB853-43B2-7238-A4F1-AD90E9E46BCC" }),
+            json!({ "ItemID": "not-a-uuid" }),
+            json!({ "Other": "ignored" }),
+        ];
+        assert_eq!(
+            parse_item_ids(&rows),
+            vec!["a3bfb853-43b2-7238-a4f1-ad90e9e46bcc", "not-a-uuid"]
+        );
     }
 }

@@ -221,7 +221,7 @@ export default function Settings() {
           </p>
           <div className="update-state">
             <div>
-              <strong>Version {displayVersion(health?.appVersion ?? "0.1.5")}</strong>
+              <strong>Version {displayVersion(health?.appVersion) || "loading"}</strong>
               <span className={update.status === "error" ? "update-note error" : "update-note"}>
                 {updateLine}
               </span>
@@ -264,7 +264,7 @@ export default function Settings() {
           <dl>
             <div>
               <dt>Version</dt>
-              <dd>{displayVersion(health?.appVersion ?? "0.1.5")}</dd>
+              <dd>{displayVersion(health?.appVersion) || "loading"}</dd>
             </div>
             <div>
               <dt>Runtime</dt>

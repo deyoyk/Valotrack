@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import {
   Activity,
   Crosshair,
@@ -264,6 +265,11 @@ function UpdateBanner() {
 
 export default function App() {
   const [page, setPage] = useState<Page>(readPage);
+  const [appVersion, setAppVersion] = useState("");
+
+  useEffect(() => {
+    void getVersion().then(setAppVersion).catch(() => void 0);
+  }, []);
 
   useEffect(() => {
     const onHash = () => setPage(readPage());
@@ -305,7 +311,7 @@ export default function App() {
 
         <div className="sidebar-foot">
           <span className="dot" />
-          <span>all data stays local</span>
+          <span className="sidebar-version">{displayVersion(appVersion) || "Valotrack"}</span>
         </div>
       </aside>
 

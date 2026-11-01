@@ -257,6 +257,11 @@ button:disabled {
   color: var(--dim);
 }
 
+.sidebar-foot .sidebar-version {
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
 .dot {
   width: 5px;
   height: 5px;

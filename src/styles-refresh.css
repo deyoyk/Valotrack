@@ -936,6 +936,54 @@ summary:focus-visible,
 
 .crosshair-card-preview {
   min-height: 168px;
+  background-color: #9f9b8f;
+  background-image: url("/crosshair-wall.svg");
+  background-position: center;
+  background-size: cover;
+}
+
+.crosshair-preview {
+  background: transparent;
+}
+
+.crosshair-detail-preview .crosshair-preview,
+.builder-preview .crosshair-preview {
+  background-color: #9f9b8f;
+  background-image: url("/crosshair-wall.svg");
+  background-position: center;
+  background-size: cover;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.compare-preview {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background-color: #9f9b8f;
+  background-image: url("/crosshair-wall.svg");
+  background-position: center;
+  background-size: cover;
+}
+
+.compare-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+}
+
+.compare-meta strong {
+  font-size: 16px;
+}
+
+.compare-meta span {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 11px;
 }
 
 .crosshair-cat {

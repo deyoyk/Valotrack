@@ -1,18 +1,6 @@
 import { cn } from "../lib/format";
 import { CrosshairSettings, crosshairColor } from "../lib/crosshair";
 
-export const SCENES = [
-  { id: "ascent", name: "Ascent", art: "/maps/ascent-attack.svg" },
-  { id: "bind", name: "Bind", art: "/maps/bind-attack.svg" },
-  { id: "haven", name: "Haven", art: "/maps/haven-attack.svg" },
-  { id: "split", name: "Split", art: "/maps/split-attack.svg" },
-  { id: "icebox", name: "Icebox", art: "/maps/icebox-attack.svg" },
-  { id: "lotus", name: "Lotus", art: "/maps/lotus-attack.svg" },
-  { id: "sunset", name: "Sunset", art: "/maps/sunset-attack.svg" },
-  { id: "fracture", name: "Fracture", art: "/maps/fracture-attack.svg" },
-  { id: "breeze", name: "Breeze", art: "/maps/breeze-attack.svg" },
-];
-
 function OutlineRect({
   x,
   y,
@@ -54,13 +42,11 @@ function OutlineRect({
 export function CrosshairPreview({
   settings,
   size = 210,
-  scene = "ascent",
   state = "resting",
   className,
 }: {
   settings: CrosshairSettings;
   size?: number;
-  scene?: string;
   state?: "resting" | "moving" | "firing";
   className?: string;
 }) {
@@ -76,15 +62,12 @@ export function CrosshairPreview({
   const outerLength = outer.length * unit;
   const outerThickness = Math.max(0.6, outer.thickness * unit * 0.42);
   const jitter = state === "moving" ? 1.6 : state === "firing" ? 0.7 : 0;
-  const sceneArt = SCENES.find((item) => item.id === scene)?.art ?? SCENES[0].art;
 
   return (
     <div
       className={cn("crosshair-preview", `state-${state}`, className)}
       style={{ width: size, height: size }}
     >
-      <img src={sceneArt} alt="" className="crosshair-scene" draggable={false} />
-      <span className="scene-vignette" />
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-label="Crosshair preview">
         <g transform={`translate(${center + jitter}, ${center + jitter * 0.4})`}>
           {inner.thickness > 0 && inner.length > 0 && (

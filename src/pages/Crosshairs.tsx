@@ -19,7 +19,7 @@ import {
 import { copyText } from "../lib/clipboard";
 import { cn } from "../lib/format";
 import { promptText } from "../lib/prompt";
-import { CrosshairPreview, SCENES } from "../components/CrosshairPreview";
+import { CrosshairPreview } from "../components/CrosshairPreview";
 import { Modal } from "../components/Modal";
 
 type Entry = {
@@ -103,29 +103,14 @@ function CopyButton({
 }
 
 function PreviewControls({
-  scene,
-  setScene,
   state,
   setState,
 }: {
-  scene: string;
-  setScene: (scene: string) => void;
   state: "resting" | "moving" | "firing";
   setState: (state: "resting" | "moving" | "firing") => void;
 }) {
   return (
     <div className="preview-controls">
-      <div className="scene-tabs">
-        {SCENES.map((item) => (
-          <button
-            key={item.id}
-            className={scene === item.id ? "active" : ""}
-            onClick={() => setScene(item.id)}
-          >
-            {item.name}
-          </button>
-        ))}
-      </div>
       <div className="segmented">
         {(["resting", "moving", "firing"] as const).map((item) => (
           <button
@@ -156,20 +141,14 @@ function DetailModal({
   toggleFavorite: () => void;
   onCopy: () => void;
 }) {
-  const [scene, setScene] = useState("ascent");
   const [state, setState] = useState<"resting" | "moving" | "firing">("resting");
   const settings = useMemo(() => parseCrosshair(entry.code), [entry.code]);
   return (
     <Modal onClose={onClose} label={`${entry.name} crosshair`} className="crosshair-modal">
       <div className="crosshair-detail">
         <div className="crosshair-detail-preview">
-          <CrosshairPreview settings={settings} size={330} scene={scene} state={state} />
-          <PreviewControls
-            scene={scene}
-            setScene={setScene}
-            state={state}
-            setState={setState}
-          />
+          <CrosshairPreview settings={settings} size={330} state={state} />
+          <PreviewControls state={state} setState={setState} />
         </div>
         <div className="crosshair-detail-info">
           <span className="profile-kicker">
@@ -229,7 +208,6 @@ function BuilderModal({
   onSaveFavorite: (code: string) => void;
 }) {
   const [settings, setSettings] = useState<CrosshairSettings>(initial);
-  const [scene, setScene] = useState("ascent");
   const [state, setState] = useState<"resting" | "moving" | "firing">("resting");
   const [importCode, setImportCode] = useState("");
   const code = buildCrosshair(settings);
@@ -266,8 +244,8 @@ function BuilderModal({
       </div>
       <div className="builder-layout">
         <div className="builder-preview">
-          <CrosshairPreview settings={settings} size={300} scene={scene} state={state} />
-          <PreviewControls scene={scene} setScene={setScene} state={state} setState={setState} />
+          <CrosshairPreview settings={settings} size={300} state={state} />
+          <PreviewControls state={state} setState={setState} />
           <code className="code-box builder-code">{code}</code>
           <button className="button small" onClick={() => onSaveFavorite(code)}>
             <Heart size={12} /> Save to library
@@ -429,10 +407,29 @@ function CompareModal({
   entries: Entry[];
   onClose: () => void;
 }) {
-  const [left, setLeft] = useState(entries[0]?.id ?? ALL[0].id);
-  const [right, setRight] = useState(entries[1]?.id ?? ALL[1].id);
-  const leftEntry = entries.find((entry) => entry.id === left) ?? entries[0] ?? ALL[0];
-  const rightEntry = entries.find((entry) => entry.id === right) ?? entries[1] ?? ALL[1];
+  const pool = useMemo(() => {
+    const list = entries.length ? [...entries] : [...ALL];
+    if (list.length < 2) {
+      for (const entry of ALL) {
+        if (!list.some((row) => row.id === entry.id)) list.push(entry);
+        if (list.length >= 2) break;
+      }
+    }
+    return list;
+  }, [entries]);
+  const [left, setLeft] = useState(pool[0]?.id ?? ALL[0].id);
+  const [right, setRight] = useState(pool[1]?.id ?? pool[0]?.id ?? ALL[1].id);
+
+  useEffect(() => {
+    if (!pool.some((entry) => entry.id === left)) setLeft(pool[0]?.id ?? ALL[0].id);
+    if (!pool.some((entry) => entry.id === right)) {
+      setRight(pool[1]?.id ?? pool[0]?.id ?? ALL[1].id);
+    }
+  }, [left, pool, right]);
+
+  const leftEntry = pool.find((entry) => entry.id === left) ?? pool[0] ?? ALL[0];
+  const rightEntry = pool.find((entry) => entry.id === right) ?? pool[1] ?? pool[0] ?? ALL[1];
+
   return (
     <Modal onClose={onClose} label="Compare crosshairs" className="compare-modal">
       <div className="builder-head">
@@ -443,16 +440,31 @@ function CompareModal({
       </div>
       <div className="compare-grid">
         {[
-          [leftEntry, left, setLeft] as const,
-          [rightEntry, right, setRight] as const,
-        ].map(([entry, value, setValue]) => (
-          <div className="compare-card" key={entry.id}>
-            <CrosshairPreview settings={parseCrosshair(entry.code)} size={260} />
+          [leftEntry, left, setLeft, right, setRight] as const,
+          [rightEntry, right, setRight, left, setLeft] as const,
+        ].map(([entry, value, setValue, otherValue, setOtherValue], index) => (
+          <div className="compare-card" key={index}>
+            <div className="compare-preview">
+              <CrosshairPreview
+                settings={parseCrosshair(entry.code)}
+                size={260}
+              />
+            </div>
+            <div className="compare-meta">
+              <strong>{entry.name}</strong>
+              <span>
+                {entry.cat} · {entry.copied.toLocaleString()} copies
+              </span>
+            </div>
             <select
               value={value}
-              onChange={(event) => setValue(Number(event.target.value))}
+              onChange={(event) => {
+                const next = Number(event.target.value);
+                if (next === otherValue) setOtherValue(value);
+                setValue(next);
+              }}
             >
-              {entries.map((row) => (
+              {pool.map((row) => (
                 <option value={row.id} key={row.id}>
                   {row.name} · {row.cat}
                 </option>
@@ -634,7 +646,7 @@ export default function Crosshairs() {
               onClick={() => setDetail(entry)}
             >
               <div className="crosshair-card-preview">
-                <CrosshairPreview settings={settings} size={178} scene="bind" />
+                <CrosshairPreview settings={settings} size={178} />
                 <span className="crosshair-cat">{entry.cat}</span>
                 <span
                   className={cn("crosshair-fav", favorite && "active")}

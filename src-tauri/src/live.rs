@@ -143,6 +143,9 @@ pub async fn board(state: &Arc<AppState>) -> Result<Value, String> {
 async fn build(state: &Arc<AppState>, session: Arc<Session>) -> Result<Value, String> {
     let presences = session.presences().await.unwrap_or_default();
     let mut game_state = session.game_state(&presences);
+    if (game_state == "OFFLINE" || game_state == "MENUS") && !valorant_running() {
+        return Ok(game_closed());
+    }
     if game_state == "OFFLINE" {
         game_state = session
             .probe_state()

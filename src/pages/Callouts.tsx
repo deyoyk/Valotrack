@@ -1,5 +1,15 @@
 import { useMemo, useState } from "react";
-import { Compass, Flag, Info, Map as MapIcon, Search } from "lucide-react";
+import {
+  Check,
+  CircleHelp,
+  Compass,
+  Flag,
+  Info,
+  Map as MapIcon,
+  Search,
+  Trophy,
+  X,
+} from "lucide-react";
 import calloutsData from "../data/callouts.json";
 import { cn } from "../lib/format";
 
@@ -31,6 +41,11 @@ export default function Callouts() {
   const [search, setSearch] = useState("");
   const [region, setRegion] = useState("All");
   const [selected, setSelected] = useState<Callout | null>(null);
+  const [quiz, setQuiz] = useState(false);
+  const [quizTarget, setQuizTarget] = useState<Callout | null>(null);
+  const [guess, setGuess] = useState("");
+  const [quizResult, setQuizResult] = useState<"correct" | "wrong" | null>(null);
+  const [score, setScore] = useState({ correct: 0, total: 0 });
 
   const map = MAPS[mapName];
   const regions = useMemo(
@@ -53,6 +68,34 @@ export default function Callouts() {
   const art = `/maps/${map.slug}-attack.svg`;
   const active = selected ?? rows[0] ?? map.callouts[0];
   const tips = map.tips?.[active?.region ?? ""] ?? [];
+
+  function newQuestion(nextMap = map) {
+    const list = nextMap.callouts.filter((callout) => callout.inGame || callout.region !== "Other");
+    const pool = list.length ? list : nextMap.callouts;
+    setQuizTarget(pool[Math.floor(Math.random() * pool.length)] ?? null);
+    setGuess("");
+    setQuizResult(null);
+  }
+
+  function startQuiz() {
+    setQuiz(true);
+    setSelected(null);
+    setScore({ correct: 0, total: 0 });
+    newQuestion();
+  }
+
+  function submitGuess() {
+    if (!quizTarget || quizResult) return;
+    const answer = guess.trim().toLowerCase();
+    const valid = [quizTarget.name, ...quizTarget.aliases].some(
+      (candidate) => candidate.trim().toLowerCase() === answer,
+    );
+    setQuizResult(valid ? "correct" : "wrong");
+    setScore((current) => ({
+      correct: current.correct + (valid ? 1 : 0),
+      total: current.total + 1,
+    }));
+  }
 
   return (
     <div className="page callouts-page">
@@ -84,6 +127,7 @@ export default function Callouts() {
                 setMapName(name);
                 setSelected(null);
                 setRegion("All");
+                if (quiz) newQuestion(MAPS[name]);
               }}
             >
               {name}
@@ -91,6 +135,12 @@ export default function Callouts() {
           ))}
         </div>
         <div className="toolbar-right">
+          <button
+            className={cn("button small", quiz && "active")}
+            onClick={() => (quiz ? setQuiz(false) : startQuiz())}
+          >
+            <CircleHelp size={13} /> {quiz ? "Exit quiz" : "Quiz me"}
+          </button>
           <div className="segmented">
             <button className={!defender ? "active" : ""} onClick={() => setDefender(false)}>
               Attacker view
@@ -114,14 +164,15 @@ export default function Callouts() {
             </span>
           </div>
           <div className="callout-map">
-            <div className={cn("callout-map-inner", defender && "flipped")}>
+            <div className={cn("callout-map-inner", defender && "flipped", quiz && "quiz-mode")}>
               <img src={art} alt={`${mapName} map`} draggable={false} />
               {map.callouts.map((callout) => (
                 <button
                   key={callout.id}
                   className={cn(
                     "callout-pin",
-                    active?.id === callout.id && "active",
+                    active?.id === callout.id && !quiz && "active",
+                    quiz && quizTarget?.id === callout.id && "quiz-target",
                     rows.some((row) => row.id === callout.id) ? "" : "dimmed",
                   )}
                   style={{ left: `${callout.x}%`, top: `${callout.y}%` }}
@@ -135,42 +186,106 @@ export default function Callouts() {
           </div>
         </section>
 
-        <section className="panel callout-detail">
-          <div className="panel-heading">
-            <div>
-              <span className="panel-label">{active?.region ?? "Callout"}</span>
-              <h2>{active?.name ?? "Map callout"}</h2>
-            </div>
-            {active?.inGame ? (
-              <span className="in-game-badge">in-game</span>
-            ) : (
-              <span className="community-badge">community</span>
-            )}
-          </div>
-          <p className="callout-description">{active?.description}</p>
-          {active?.aliases.length ? (
-            <div className="alias-row">
-              <span>Also called</span>
-              {active.aliases.map((alias) => (
-                <em key={alias}>{alias}</em>
-              ))}
-            </div>
-          ) : null}
-          {tips.length ? (
-            <div className="callout-tips">
-              <span className="panel-label">Playing it</span>
-              {tips.map((tip) => (
-                <div key={tip}>
-                  <Info size={12} />
-                  <span>{tip}</span>
+        <section className={cn("panel callout-detail", quiz && "callout-quiz")}>
+          {quiz ? (
+            <>
+              <div className="panel-heading">
+                <div>
+                  <span className="panel-label">Callout quiz</span>
+                  <h2>Name the pin</h2>
                 </div>
-              ))}
-            </div>
-          ) : null}
+                <span className="quiz-score">
+                  <Trophy size={14} /> {score.correct}/{score.total}
+                </span>
+              </div>
+              <p className="callout-description">
+                The highlighted pin is hidden. Type its callout name or an accepted alias.
+              </p>
+              <form
+                className="quiz-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitGuess();
+                }}
+              >
+                <input
+                  value={guess}
+                  onChange={(event) => setGuess(event.target.value)}
+                  placeholder="Type the callout name"
+                  disabled={quizResult !== null}
+                  autoFocus
+                />
+                {quizResult === null ? (
+                  <button className="button primary" type="submit" disabled={!guess.trim()}>
+                    Check answer
+                  </button>
+                ) : (
+                  <button className="button primary" type="button" onClick={() => newQuestion()}>
+                    Next callout
+                  </button>
+                )}
+              </form>
+              {quizResult && (
+                <div className={cn("quiz-result", quizResult)}>
+                  {quizResult === "correct" ? <Check size={18} /> : <X size={18} />}
+                  <div>
+                    <strong>
+                      {quizResult === "correct" ? "Correct" : "Not quite"}
+                    </strong>
+                    <span>
+                      {quizTarget?.name}
+                      {quizTarget?.region ? ` · ${quizTarget.region}` : ""}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <div className="quiz-help">
+                <Info size={14} />
+                <span>
+                  The map keeps every other pin visible. Use the shape of the site, not the
+                  labels, to find the answer.
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="panel-heading">
+                <div>
+                  <span className="panel-label">{active?.region ?? "Callout"}</span>
+                  <h2>{active?.name ?? "Map callout"}</h2>
+                </div>
+                {active?.inGame ? (
+                  <span className="in-game-badge">in-game</span>
+                ) : (
+                  <span className="community-badge">community</span>
+                )}
+              </div>
+              <p className="callout-description">{active?.description}</p>
+              {active?.aliases.length ? (
+                <div className="alias-row">
+                  <span>Also called</span>
+                  {active.aliases.map((alias) => (
+                    <em key={alias}>{alias}</em>
+                  ))}
+                </div>
+              ) : null}
+              {tips.length ? (
+                <div className="callout-tips">
+                  <span className="panel-label">Playing it</span>
+                  {tips.map((tip) => (
+                    <div key={tip}>
+                      <Info size={12} />
+                      <span>{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </>
+          )}
         </section>
       </div>
 
-      <div className="callout-list-panel panel">
+      <div className={cn("callout-list-panel panel", quiz && "quiz-hidden")}>
         <div className="callout-list-toolbar">
           <div className="search-box">
             <Search size={14} />

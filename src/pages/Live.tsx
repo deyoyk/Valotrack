@@ -15,6 +15,7 @@ import { buildDemoBoard } from "../lib/demo";
 import { cn } from "../lib/format";
 import { usePoll } from "../lib/usePoll";
 import { Scoreboard } from "../components/Scoreboard";
+import { LobbyInsights } from "../components/LobbyInsights";
 import { ProfileModal } from "../components/ProfileModal";
 import { MatchDetailModal } from "../components/MatchDetailModal";
 
@@ -189,6 +190,8 @@ export default function Live() {
           onPlayer={setSelected}
         />
       )}
+
+      {shownBoard && <LobbyInsights board={shownBoard} onPlayer={setSelected} />}
 
       {selected && (
         <ProfileModal

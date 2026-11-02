@@ -4,6 +4,7 @@ import {
   Diamond,
   Loader2,
   RefreshCw,
+  Search,
   Sparkles,
   Wallet,
 } from "lucide-react";
@@ -20,6 +21,8 @@ export default function Collection() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [type, setType] = useState("All");
 
   async function load(quiet = false, refresh = false) {
     if (!quiet) setRefreshing(true);
@@ -37,6 +40,13 @@ export default function Collection() {
   useEffect(() => {
     void load(true);
   }, []);
+
+  const owned = (data?.owned ?? []).filter((item) => {
+    if (type !== "All" && item.type !== type) return false;
+    if (!search.trim()) return true;
+    return item.name.toLowerCase().includes(search.trim().toLowerCase());
+  });
+  const types = ["All", ...Array.from(new Set((data?.owned ?? []).map((item) => item.type)))];
 
   if (loading) {
     return (
@@ -116,6 +126,27 @@ export default function Collection() {
                 </div>
                 <Diamond size={19} className="panel-icon" />
               </div>
+              <div className="collection-toolbar">
+                <div className="search-box">
+                  <Search size={14} />
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search owned items"
+                  />
+                </div>
+                <div className="filter-tabs">
+                  {types.map((item) => (
+                    <button
+                      key={item}
+                      className={type === item ? "active" : ""}
+                      onClick={() => setType(item)}
+                    >
+                      {item === "All" ? "All" : item}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="count-grid">
                 {Object.entries(data.counts).map(([key, value]) => (
                   <div key={key}>
@@ -124,9 +155,9 @@ export default function Collection() {
                   </div>
                 ))}
               </div>
-              {(data.owned?.length ?? 0) > 0 ? (
+              {(owned.length ?? 0) > 0 ? (
                 <div className="owned-grid">
-                  {data.owned.map((item, index) => (
+                  {owned.map((item, index) => (
                     <div className="owned-card" key={`${item.type}-${item.uuid}-${index}`}>
                       <div className="owned-art">
                         {item.icon ? (

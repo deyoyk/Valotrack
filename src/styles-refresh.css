@@ -559,6 +559,147 @@ summary:focus-visible,
   border-radius: 2px;
 }
 
+.lobby-insights {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.smurf-list,
+.party-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.smurf-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(224, 178, 94, 0.16);
+  border-radius: 9px;
+  background: rgba(224, 178, 94, 0.035);
+  color: var(--cream);
+  text-align: left;
+}
+
+.smurf-row:hover {
+  border-color: rgba(224, 178, 94, 0.35);
+  background: rgba(224, 178, 94, 0.07);
+}
+
+.smurf-avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid rgba(224, 178, 94, 0.22);
+  border-radius: 7px;
+  background: #17140f;
+  color: var(--amber);
+}
+
+.smurf-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.smurf-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.smurf-copy strong {
+  font-size: 13.5px;
+}
+
+.smurf-copy span {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.smurf-copy em {
+  overflow: hidden;
+  color: var(--amber);
+  font-size: 10.5px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.smurf-team {
+  color: var(--dim);
+  font-family: var(--mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+}
+
+.party-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.party-block-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.party-block-head i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.party-block-head em {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 9.5px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.party-members {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.insight-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 120px;
+  color: var(--dim);
+  font-size: 13px;
+  text-align: center;
+}
+
+.insight-empty svg {
+  color: var(--green);
+}
+
 .lock-progress span {
   font-size: 11px;
 }
@@ -1956,6 +2097,24 @@ summary:focus-visible,
   gap: 10px;
 }
 
+.collection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.collection-toolbar .search-box {
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+
+.collection-toolbar .filter-tabs {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
 .count-grid > div {
   padding: 16px;
 }
@@ -2950,6 +3109,10 @@ html[data-reduce-motion="true"] *::after {
 
   .overview-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lobby-insights {
+    grid-template-columns: 1fr;
   }
 
   .social-layout {

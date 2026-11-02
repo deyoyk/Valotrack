@@ -113,9 +113,11 @@ export function buildDemoBoard(catalog: Agent[]): LiveBoard {
   const players = NAMES.map((name, index) => {
     const agent = agents[index % agents.length];
     const rank = RANKS[index % RANKS.length];
+    const rankIndex = RANKS.findIndex((entry) => entry.tier === rank.tier);
+    const peak = RANKS[Math.max(0, rankIndex - (index % 2))];
     const team = index < 5 ? "Blue" : "Red";
     const partyIndex = index < 5 ? (index < 2 ? 0 : 1) : index < 8 ? 2 : 3;
-    const smurf = index === 4 || index === 7;
+    const smurf = index === 2 || index === 7;
     const player: Player = {
       puuid: `demo-${index}`,
       name,
@@ -139,15 +141,15 @@ export function buildDemoBoard(catalog: Agent[]): LiveBoard {
       rr: [32, 79, 8, 16, 97, 30, 51, 4, 89, 10][index],
       rrEarned: [22, 9, -18, 17, -6, 13, 24, 5, -11, 18][index],
       leaderboard: rank.tier >= 24 ? 4810 + index * 73 : 0,
-      peakRankTier: rank.tier + (index % 3),
-      peakRank: RANKS[(index + 2) % RANKS.length].name,
-      peakColor: RANKS[(index + 2) % RANKS.length].color,
+      peakRankTier: peak.tier,
+      peakRank: peak.name,
+      peakColor: peak.color,
       peakIcon: null,
       peakAct: `V26 Act ${(index % 3) + 1}`,
       previousRank: RANKS[(index + 4) % RANKS.length].name,
-      winRate: [58, 61, 49, 54, 55, 64, 53, 48, 52, 57][index],
+      winRate: [58, 61, 61, 54, 55, 64, 53, 63, 52, 57][index],
       games: [42, 118, 33, 74, 96, 151, 67, 21, 88, 63][index],
-      kd: [1.71, 1.24, 0.98, 1.42, 0.84, 1.76, 0.67, 0.9, 1.19, 1.44][index],
+      kd: [1.71, 1.24, 1.62, 1.42, 0.84, 1.76, 0.67, 1.58, 1.19, 1.44][index],
       hsPct: [28.4, 24.1, 33.8, 21.7, 26.9, 13.4, 18.2, 27.4, 22.8, 25.1][index],
       skin: null,
       weapons: [],
@@ -161,7 +163,9 @@ export function buildDemoBoard(catalog: Agent[]): LiveBoard {
       },
       smurf,
       smurfReasons: smurf
-        ? ["low level for this rank", "K/D well above rank average"]
+        ? index === 2
+          ? ["low level for Immortal", "K/D well above rank average"]
+          : ["low level for Gold", "win rate above rank average"]
         : [],
       topAgents: [
         { agent: agent.name, games: 18 },

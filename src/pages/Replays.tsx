@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Crosshair,
   FileVideo2,
+  Layers,
   Loader2,
   Pause,
   Play,
@@ -350,6 +351,46 @@ export default function Replays() {
     return groups;
   }, [replay]);
 
+  function openInPlanner() {
+    if (!round || !meta || !replay) return;
+    const objects = [
+      ...positions.map((position) => ({
+        id: `replay-player-${position.player.id}`,
+        type: "text" as const,
+        x: position.left,
+        y: position.top,
+        x2: position.left,
+        y2: position.top,
+        color: TEAM_COLORS[position.player.team] ?? "#f4f0e6",
+        step: 1,
+        text: agentName(position.player.agent),
+        team: position.player.team === "Blue" ? ("ally" as const) : ("enemy" as const),
+      })),
+      ...utility.map((item, index) => ({
+        id: `replay-utility-${index}-${item.t}`,
+        type: "circle" as const,
+        x: item.left,
+        y: item.top,
+        x2: item.left,
+        y2: item.top,
+        color: /smoke|cloud|nebula|pit|cove/i.test(item.name) ? "#8892a6" : "#ff4655",
+        step: 1,
+        radius: /smoke|cloud|nebula|pit|cove/i.test(item.name) ? 5 : 2.5,
+        ability: item.name,
+        team: "enemy" as const,
+      })),
+    ];
+    const payload = {
+      map: mapName(replay.mapUrl),
+      side: "attack",
+      objects,
+      steps: 1,
+      name: `${mapName(replay.mapUrl)} replay round ${roundIndex + 1}`,
+    };
+    localStorage.setItem("valotrack-strategy-import", JSON.stringify(payload));
+    location.hash = "strategy";
+  }
+
   return (
     <div className="page replays-page">
       <header className="page-head">
@@ -597,6 +638,9 @@ export default function Replays() {
                     <option value={2}>2×</option>
                     <option value={4}>4×</option>
                   </select>
+                  <button className="button small" onClick={openInPlanner}>
+                    <Layers size={12} /> Planner
+                  </button>
                 </div>
               </section>
 
@@ -717,6 +761,8 @@ export default function Replays() {
                       <span>ACS</span>
                       <span>ADR</span>
                       <span>HS</span>
+                      <span>FK</span>
+                      <span>ACE</span>
                     </div>
                     {players.map((player) => (
                       <div className="scoreboard-replay-row" key={player.id}>
@@ -727,6 +773,8 @@ export default function Replays() {
                         <span>{statText(player, "acs")}</span>
                         <span>{statText(player, "adr")}</span>
                         <span>{statText(player, "hsPct")}</span>
+                        <span>{statText(player, "firstKills")}</span>
+                        <span>{statText(player, "aces")}</span>
                       </div>
                     ))}
                   </div>

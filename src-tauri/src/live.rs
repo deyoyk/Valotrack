@@ -13,6 +13,32 @@ use crate::{
     riot::{RankInfo, Session},
 };
 
+fn valorant_running() -> bool {
+    let mut system = sysinfo::System::new();
+    system.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    system.processes().values().any(|process| {
+        let name = process.name().to_string_lossy().to_ascii_lowercase();
+        name == "valorant-win64-shipping.exe" || name == "valorant.exe"
+    })
+}
+
+fn game_closed() -> Value {
+    json!({
+        "available": false,
+        "state": "GAME_CLOSED",
+        "stateLabel": "VALORANT closed",
+        "source": "local",
+        "players": [],
+        "teams": {},
+        "parties": [],
+        "notice": {
+            "level": "info",
+            "action": "open_game",
+            "message": "VALORANT is not running. Open the game to see the live lobby."
+        }
+    })
+}
+
 #[derive(Clone, Default)]
 pub struct PlayerStats {
     pub kd: Option<f64>,
@@ -122,6 +148,9 @@ async fn build(state: &Arc<AppState>, session: Arc<Session>) -> Result<Value, St
             .probe_state()
             .await
             .map_err(|error| error.to_string())?;
+    }
+    if (game_state == "MENUS" || game_state == "OFFLINE") && !valorant_running() {
+        return Ok(game_closed());
     }
     if game_state == "MENUS" {
         return build_lobby(state, session.clone(), &presences).await;
@@ -1245,6 +1274,15 @@ pub async fn party_state(state: &Arc<AppState>) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn closed_game_has_no_lobby_or_team() {
+        let value = game_closed();
+        assert_eq!(value["state"], "GAME_CLOSED");
+        assert_eq!(value["players"].as_array().unwrap().len(), 0);
+        assert!(value["teams"].as_object().unwrap().is_empty());
+        assert!(value["parties"].as_array().unwrap().is_empty());
+    }
 
     #[test]
     fn smurf_flags_low_level_high_peak() {

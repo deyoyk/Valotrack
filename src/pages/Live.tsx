@@ -65,7 +65,8 @@ export default function Live() {
 
   const connected = health?.clientAvailable ?? false;
   const demoBoard = demo ? buildDemoBoard(agents) : null;
-  const shownBoard = demoBoard ?? board;
+  const gameClosed = !demo && board?.state === "GAME_CLOSED";
+  const shownBoard = demoBoard ?? (gameClosed ? null : board);
 
   return (
     <div className="page live-page">
@@ -182,6 +183,76 @@ export default function Live() {
         </section>
       )}
 
+      {connected && gameClosed && (
+        <section className="offline-grid">
+          <div className="connect-card">
+            <div className="connect-glow" />
+            <Gamepad2 size={28} />
+            <span className="eyebrow">valorant not running</span>
+            <h2>Riot client is online.</h2>
+            <p>
+              VALORANT is not running, so there is no lobby or team to show yet. Open
+              the game and reach the lobby to load the live scoreboard.
+            </p>
+            <button className="button primary" onClick={() => refresh()}>
+              <RefreshCw size={15} /> Check again
+            </button>
+            <div className="connect-steps">
+              <div>
+                <span>1</span>
+                Launch VALORANT
+              </div>
+              <div>
+                <span>2</span>
+                Sign in to the Riot client
+              </div>
+              <div>
+                <span>3</span>
+                Reach the lobby to load intel
+              </div>
+            </div>
+          </div>
+
+          <div className="client-card">
+            <span className="panel-label">Client detection</span>
+            <div className="client-row">
+              <Gamepad2 size={16} />
+              <div>
+                <strong>Riot client</strong>
+                <span>online</span>
+              </div>
+              <i className="state-dot on" />
+            </div>
+            <div className="client-row">
+              <Gamepad2 size={16} />
+              <div>
+                <strong>VALORANT</strong>
+                <span>not running</span>
+              </div>
+              <i className="state-dot" />
+            </div>
+            <div className="client-row">
+              <Cpu size={16} />
+              <div>
+                <strong>Region</strong>
+                <span>{health?.region ?? "detected from game logs"}</span>
+              </div>
+            </div>
+            <div className="client-row">
+              <ShieldCheck size={16} />
+              <div>
+                <strong>Data path</strong>
+                <span className="path">{health?.lockfilePath ?? "local Riot client"}</span>
+              </div>
+            </div>
+            <div className="privacy-note">
+              <ShieldCheck size={14} />
+              Riot client only. Valotrack will load the lobby when VALORANT starts.
+            </div>
+          </div>
+        </section>
+      )}
+
       {shownBoard && (
         <Scoreboard
           board={shownBoard}
@@ -214,7 +285,7 @@ export default function Live() {
         />
       )}
 
-      {!shownBoard && !loading && connected && (
+      {!shownBoard && !loading && connected && !gameClosed && (
         <div className="center-state">
           <Loader2 size={20} className="spin" />
           <span>Waiting for the client session</span>

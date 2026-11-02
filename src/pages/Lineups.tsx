@@ -51,6 +51,8 @@ export default function Lineups() {
   const [agent, setAgent] = useState("All");
   const [ability, setAbility] = useState("All");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<"recommended" | "newest" | "views">("recommended");
+  const [playbookOnly, setPlaybookOnly] = useState(false);
   const [selected, setSelected] = useState<Lineup | null>(null);
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
@@ -88,6 +90,7 @@ export default function Lineups() {
     const needle = deferredSearch.trim().toLowerCase();
     return mapLineups
       .filter((lineup) => {
+        if (playbookOnly && !favorites.includes(lineup.id)) return false;
         if (agent !== "All" && lineup.agent !== agent) return false;
         if (ability !== "All" && lineup.ability !== ability) return false;
         if (!needle) return true;
@@ -98,8 +101,11 @@ export default function Lineups() {
           lineup.creator.toLowerCase().includes(needle)
         );
       })
-      .sort((a, b) => b.views - a.views);
-  }, [ability, agent, deferredSearch, mapLineups]);
+      .sort((a, b) => {
+        if (sort === "newest") return Number(b.id) - Number(a.id);
+        return b.views - a.views;
+      });
+  }, [ability, agent, deferredSearch, favorites, mapLineups, playbookOnly, sort]);
 
   const active = selected ?? rows[0] ?? null;
   const pins = rows.slice(0, 60);
@@ -207,6 +213,9 @@ export default function Lineups() {
                 />
               ))}
           </div>
+        </section>
+
+        <section className="panel lineup-list-panel">
           {active && (
             <div className="lineup-active-card">
               <div className="lineup-thumb">
@@ -240,9 +249,6 @@ export default function Lineups() {
               </div>
             </div>
           )}
-        </section>
-
-        <section className="panel lineup-list-panel">
           <div className="lineup-toolbar">
             <div className="search-box">
               <Search size={14} />
@@ -276,6 +282,23 @@ export default function Lineups() {
                   {item === "All" ? "Every ability" : item}
                 </option>
               ))}
+            </select>
+            <button
+              className={cn("button small", playbookOnly && "active")}
+              onClick={() => setPlaybookOnly((value) => !value)}
+            >
+              <Heart size={12} fill={playbookOnly ? "currentColor" : "none"} /> Playbook
+            </button>
+            <select
+              className="small-select"
+              value={sort}
+              onChange={(event) =>
+                setSort(event.target.value as "recommended" | "newest" | "views")
+              }
+            >
+              <option value="recommended">Recommended</option>
+              <option value="newest">Newest</option>
+              <option value="views">Most viewed</option>
             </select>
           </div>
           <div className="lineup-list">

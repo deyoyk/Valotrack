@@ -9,8 +9,10 @@ import {
   Save,
   ShieldCheck,
   SlidersHorizontal,
+  Type,
 } from "lucide-react";
 import { api, Health, Settings as AppSettings } from "../lib/api";
+import { loadPreferences, Preferences, savePreferences } from "../lib/preferences";
 import { useUpdater } from "../lib/updater";
 import { displayVersion } from "../lib/version";
 
@@ -29,6 +31,7 @@ export default function Settings() {
   const [saved, setSaved] = useState<AppSettings | null>(null);
   const [health, setHealth] = useState<Health | null>(null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [preferences, setPreferences] = useState<Preferences>(loadPreferences);
   const update = useUpdater();
 
   const updateLine =
@@ -80,6 +83,12 @@ export default function Settings() {
   }
 
   const dirty = JSON.stringify(settings) !== JSON.stringify(saved);
+
+  function updatePreferences(patch: Partial<Preferences>) {
+    const next = { ...preferences, ...patch };
+    setPreferences(next);
+    savePreferences(next);
+  }
 
   return (
     <div className="page settings-page">
@@ -205,6 +214,61 @@ export default function Settings() {
               Client automation may violate Riot's Terms of Service. Every action is
               opt-in and previewable before it runs.
             </span>
+          </div>
+        </section>
+
+        <section className="panel preferences-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="panel-label">Accessibility</span>
+              <h2>Read it your way</h2>
+            </div>
+            <Type size={20} className="panel-icon" />
+          </div>
+
+          <div className="field">
+            <span>Text size</span>
+            <div className="segmented text-scale-tabs">
+              {[
+                { id: "comfortable", label: "Comfortable" },
+                { id: "large", label: "Large" },
+                { id: "xlarge", label: "Extra large" },
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  className={preferences.textScale === option.id ? "active" : ""}
+                  onClick={() =>
+                    updatePreferences({ textScale: option.id as Preferences["textScale"] })
+                  }
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <small>Scales page content without shrinking the navigation.</small>
+          </div>
+
+          <label className="toggle-row">
+            <div>
+              <strong>Reduce motion</strong>
+              <span>Turn off pulse, progress and transition animations across the app.</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={preferences.reduceMotion}
+              onChange={(event) => updatePreferences({ reduceMotion: event.target.checked })}
+            />
+            <i />
+          </label>
+
+          <div className="info-row privacy-link-row">
+            <ShieldCheck size={15} />
+            <div>
+              <span>Privacy and automation</span>
+              <button className="link-button" onClick={() => (location.hash = "safety")}>
+                Open the trust center
+              </button>
+            </div>
           </div>
         </section>
 

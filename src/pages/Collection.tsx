@@ -193,21 +193,28 @@ export default function Collection() {
                 <Sparkles size={19} className="panel-icon" />
               </div>
               <div className="tier-list">
-                {Object.entries(data.tiers)
-                  .sort((a, b) => b[1].vp - a[1].vp)
-                  .map(([tier, row]) => {
-                    const share = data.totalVp ? (row.vp / data.totalVp) * 100 : 0;
-                    return (
-                      <div className="tier-row" key={tier}>
-                        <span>{tier}</span>
-                        <div className="mini-bar">
-                          <i style={{ width: `${share}%` }} />
+                {Object.keys(data.tiers).length ? (
+                  Object.entries(data.tiers)
+                    .sort((a, b) => b[1].vp - a[1].vp)
+                    .map(([tier, row]) => {
+                      const share = data.totalVp ? (row.vp / data.totalVp) * 100 : 0;
+                      return (
+                        <div className="tier-row" key={tier}>
+                          <span>{tier}</span>
+                          <div className="mini-bar">
+                            <i style={{ width: `${share}%` }} />
+                          </div>
+                          <strong>{row.vp.toLocaleString()} VP</strong>
+                          <em>{row.skins} skins</em>
                         </div>
-                        <strong>{row.vp.toLocaleString()} VP</strong>
-                        <em>{row.skins} skins</em>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                ) : (
+                  <div className="owned-empty">
+                    <Diamond size={17} />
+                    <span>No tiered skins on this account yet.</span>
+                  </div>
+                )}
               </div>
             </section>
           </div>

@@ -11,14 +11,18 @@ import {
   Eraser,
   Hand,
   Layers,
+  Minus,
   MousePointer2,
   MoveUpRight,
   Play,
+  Plus,
+  Redo2,
   RotateCcw,
   Save,
   Square,
   Trash2,
   Type as TypeIcon,
+  Undo2,
   Upload,
   Users,
 } from "lucide-react";
@@ -51,6 +55,7 @@ type PlanObject = {
   ability?: string;
   radius?: number;
   step: number;
+  team?: "ally" | "enemy";
 };
 
 type Plan = {
@@ -94,6 +99,10 @@ export default function Strategy() {
   const [side, setSide] = useState<"attack" | "defense">("attack");
   const [tool, setTool] = useState<Tool>("select");
   const [color, setColor] = useState(COLORS[1]);
+  const [placement, setPlacement] = useState<"ally" | "enemy">("ally");
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [agentName, setAgentName] = useState(AGENTS[0].name);
   const [abilityName, setAbilityName] = useState(AGENTS[0].kit[0]?.name ?? "");
   const [objects, setObjects] = useState<PlanObject[]>([]);
@@ -113,7 +122,50 @@ export default function Strategy() {
   const [showShare, setShowShare] = useState(false);
   const [message, setMessage] = useState("");
   const dragRef = useRef<{ x: number; y: number; object?: PlanObject } | null>(null);
+  const panRef = useRef<{ x: number; y: number } | null>(null);
+  const historyRef = useRef<PlanObject[][]>([]);
+  const futureRef = useRef<PlanObject[][]>([]);
   const mapRef = useRef<HTMLDivElement>(null);
+
+  function commit(next: PlanObject[]) {
+    historyRef.current = [...historyRef.current.slice(-49), objects];
+    futureRef.current = [];
+    setObjects(next);
+    setHistoryVersion((value) => value + 1);
+  }
+
+  function undo() {
+    const previous = historyRef.current.pop();
+    if (!previous) return;
+    futureRef.current = [...futureRef.current, objects];
+    setObjects(previous);
+    setHistoryVersion((value) => value + 1);
+  }
+
+  function redo() {
+    const next = futureRef.current.pop();
+    if (!next) return;
+    historyRef.current = [...historyRef.current, objects];
+    setObjects(next);
+    setHistoryVersion((value) => value + 1);
+  }
+
+  function resetView() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+
+  function exportPlan() {
+    const payload = { map, side, objects, steps: step, name: `${map} ${side}` };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `valotrack-${map.toLowerCase()}-${side}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setMessage("Plan exported as JSON.");
+  }
 
   const agent = AGENTS.find((item) => item.name === agentName) ?? AGENTS[0];
   const scale = SCALES[map]?.[side] ?? 14;
@@ -123,6 +175,23 @@ export default function Strategy() {
     if (playing) return objects.filter((object) => object.step <= step);
     return objects;
   }, [objects, playing, step]);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("valotrack-strategy-import");
+    if (!raw) return;
+    localStorage.removeItem("valotrack-strategy-import");
+    try {
+      const parsed = JSON.parse(raw) as Partial<Plan>;
+      if (!Array.isArray(parsed.objects)) return;
+      setMap(MAPS.includes(parsed.map ?? "") ? (parsed.map as string) : map);
+      setSide(parsed.side === "defense" ? "defense" : "attack");
+      setObjects(parsed.objects);
+      setStep(Math.max(1, parsed.steps ?? 1));
+      setMessage(`Loaded ${parsed.name ?? "replay plan"} from the replay viewer.`);
+    } catch {
+      setMessage("That replay plan could not be read.");
+    }
+  }, []);
 
   useEffect(() => {
     if (!playing) return;
@@ -136,14 +205,32 @@ export default function Strategy() {
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
       if (event.key === "Delete" || event.key === "Backspace") {
         if (selected) {
-          setObjects((current) => current.filter((object) => object.id !== selected));
+          commit(objects.filter((object) => object.id !== selected));
           setSelected(null);
         }
       }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
-        setObjects((current) => current.slice(0, -1));
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+      }
+      if (/^[1-7]$/.test(event.key)) {
+        const next = TOOLS[Number(event.key) - 1];
+        if (next) setTool(next.id);
       }
       if (event.key === "Escape") {
         setDraft(null);
@@ -152,7 +239,7 @@ export default function Strategy() {
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selected]);
+  }, [objects, selected]);
 
   function point(event: ReactPointerEvent) {
     const rect = mapRef.current?.getBoundingClientRect();
@@ -164,6 +251,11 @@ export default function Strategy() {
   }
 
   function startDraw(event: ReactPointerEvent) {
+    if (event.ctrlKey || event.metaKey || event.button === 1) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+      panRef.current = { x: event.clientX, y: event.clientY };
+      return;
+    }
     if (tool === "select" || tool === "erase") return;
     const start = point(event);
     if (tool === "circle" || tool === "text") return;
@@ -176,13 +268,21 @@ export default function Strategy() {
       y: start.y,
       x2: start.x,
       y2: start.y,
-      color,
+      color: placement === "ally" ? color : COLORS[1],
       step,
       text: "",
+      team: placement,
     });
   }
 
   function moveDraw(event: ReactPointerEvent) {
+    if (panRef.current) {
+      const dx = event.clientX - panRef.current.x;
+      const dy = event.clientY - panRef.current.y;
+      panRef.current = { x: event.clientX, y: event.clientY };
+      setPan((current) => ({ x: current.x + dx, y: current.y + dy }));
+      return;
+    }
     if (!dragRef.current) return;
     const next = point(event);
     setDraft((current) =>
@@ -191,6 +291,10 @@ export default function Strategy() {
   }
 
   function endDraw(event: ReactPointerEvent) {
+    if (panRef.current) {
+      panRef.current = null;
+      return;
+    }
     if (!dragRef.current) return;
     const end = point(event);
     dragRef.current = null;
@@ -201,13 +305,14 @@ export default function Strategy() {
         return current;
       }
       const next = { ...current, x2: end.x, y2: end.y };
-      setObjects((items) => [...items, next]);
+      commit([...objects, next]);
       setSelected(next.id);
       return null;
     });
   }
 
   async function clickMap(event: ReactPointerEvent) {
+    if (panRef.current || event.ctrlKey || event.metaKey || event.button === 1) return;
     if (tool === "circle") {
       const start = point(event);
       const distance = abilityRadius(abilityName, scale);
@@ -218,12 +323,13 @@ export default function Strategy() {
         y: start.y,
         x2: start.x,
         y2: start.y,
-        color,
+        color: placement === "ally" ? color : COLORS[1],
         step,
         ability: abilityName,
         radius: distance,
+        team: placement,
       };
-      setObjects((current) => [...current, object]);
+      commit([...objects, object]);
       setSelected(object.id);
     }
     if (tool === "text") {
@@ -245,8 +351,9 @@ export default function Strategy() {
         color,
         step,
         text: text.trim().slice(0, 40),
+        team: placement,
       };
-      setObjects((current) => [...current, object]);
+      commit([...objects, object]);
       setSelected(object.id);
     }
     if (tool === "erase") {
@@ -257,12 +364,15 @@ export default function Strategy() {
   function objectPointerDown(event: ReactPointerEvent, object: PlanObject) {
     event.stopPropagation();
     if (tool === "erase") {
-      setObjects((current) => current.filter((item) => item.id !== object.id));
+      commit(objects.filter((item) => item.id !== object.id));
       setSelected(null);
       return;
     }
     if (tool !== "select") return;
     setSelected(object.id);
+    historyRef.current = [...historyRef.current.slice(-49), objects];
+    futureRef.current = [];
+    setHistoryVersion((value) => value + 1);
     const start = point(event);
     dragRef.current = { ...start, object };
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -332,7 +442,7 @@ export default function Strategy() {
         kind: "warning",
       })
     ) {
-      setObjects([]);
+      commit([]);
       setSelected(null);
     }
   }
@@ -385,6 +495,9 @@ export default function Strategy() {
           <div className="head-buttons">
             <button className="button small" onClick={importPlan}>
               <Upload size={13} /> Import
+            </button>
+            <button className="button small" onClick={exportPlan}>
+              <Download size={13} /> Export
             </button>
             <button className="button small" onClick={share}>
               <Download size={13} /> Share code
@@ -446,6 +559,24 @@ export default function Strategy() {
               })}
             </div>
             <p className="tool-hint">{TOOLS.find((item) => item.id === tool)?.hint}</p>
+          </div>
+
+          <div className="strategy-group">
+            <span className="panel-label">Placing for</span>
+            <div className="segmented">
+              <button
+                className={placement === "ally" ? "active" : ""}
+                onClick={() => setPlacement("ally")}
+              >
+                Ally
+              </button>
+              <button
+                className={placement === "enemy" ? "active" : ""}
+                onClick={() => setPlacement("enemy")}
+              >
+                Enemy
+              </button>
+            </div>
           </div>
 
           <div className="strategy-group">
@@ -546,14 +677,50 @@ export default function Strategy() {
               </span>
               <h2>Round plan</h2>
             </div>
-            <div className="strategy-board-actions">
+            <div className="strategy-board-actions" data-history={historyVersion}>
+              <div className="strategy-history">
+                <button
+                  className="icon-button"
+                  onClick={undo}
+                  disabled={historyRef.current.length === 0}
+                  title="Undo (Ctrl + Z)"
+                >
+                  <Undo2 size={15} />
+                </button>
+                <button
+                  className="icon-button"
+                  onClick={redo}
+                  disabled={futureRef.current.length === 0}
+                  title="Redo (Ctrl + Shift + Z)"
+                >
+                  <Redo2 size={15} />
+                </button>
+              </div>
+              <div className="zoom-controls">
+                <button
+                  className="icon-button"
+                  onClick={() => setZoom((value) => Math.max(0.6, value - 0.15))}
+                  title="Zoom out"
+                >
+                  <Minus size={15} />
+                </button>
+                <span>{Math.round(zoom * 100)}%</span>
+                <button
+                  className="icon-button"
+                  onClick={() => setZoom((value) => Math.min(2.5, value + 0.15))}
+                  title="Zoom in"
+                >
+                  <Plus size={15} />
+                </button>
+                <button className="icon-button" onClick={resetView} title="Reset view">
+                  <RotateCcw size={15} />
+                </button>
+              </div>
               {selectedObject && (
                 <button
                   className="button small danger"
                   onClick={() => {
-                    setObjects((current) =>
-                      current.filter((object) => object.id !== selectedObject.id),
-                    );
+                    commit(objects.filter((object) => object.id !== selectedObject.id));
                     setSelected(null);
                   }}
                 >
@@ -566,15 +733,29 @@ export default function Strategy() {
             </div>
           </div>
           <div
-            className="strategy-map"
-            ref={mapRef}
-            onPointerDown={(event) => {
-              void clickMap(event);
-              startDraw(event);
+            className="strategy-map-viewport"
+            onWheel={(event) => {
+              if (!event.ctrlKey && !event.metaKey) return;
+              event.preventDefault();
+              setZoom((value) =>
+                Math.min(2.5, Math.max(0.6, value - Math.sign(event.deltaY) * 0.1)),
+              );
             }}
-            onPointerMove={moveDraw}
-            onPointerUp={endDraw}
           >
+            <div
+              className="strategy-map"
+              ref={mapRef}
+              style={{
+                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                transformOrigin: "center center",
+              }}
+              onPointerDown={(event) => {
+                void clickMap(event);
+                startDraw(event);
+              }}
+              onPointerMove={moveDraw}
+              onPointerUp={endDraw}
+            >
             <img src={image} alt={`${map} ${side}`} draggable={false} />
             <svg className="strategy-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
               {visibleObjects.map((object) => {
@@ -743,10 +924,11 @@ export default function Strategy() {
                 </marker>
               </defs>
             </svg>
+            </div>
           </div>
           <div className="strategy-foot">
             <span>
-              <Hand size={12} /> Ctrl + Z to undo · Delete removes selection
+              <Hand size={12} /> Ctrl + Z undo · Ctrl + drag pan · Ctrl + scroll zoom
             </span>
             <span>{objects.length} objects · step {step}</span>
           </div>

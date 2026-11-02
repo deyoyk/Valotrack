@@ -95,7 +95,29 @@ export default function Sensitivity() {
     const degrees = sourceSens * game.yaw;
     return degrees / 0.07;
   }, [game, sourceSens]);
+  const conversions = useMemo(
+    () =>
+      GAMES.filter((item) => item.id !== "valorant").map((item) => ({
+        ...item,
+        value: (sensitivity * 0.07) / item.yaw,
+        distance: cm360((sensitivity * 0.07) / item.yaw, dpi, item.yaw),
+      })),
+    [dpi, sensitivity],
+  );
   const physical = cm360(sensitivity, dpi, 0.07);
+  const nearest = closest[0];
+  const nearCount = useMemo(
+    () => PROS.filter((pro) => Math.abs(pro.edpi - edpi) <= edpi * 0.05).length,
+    [edpi],
+  );
+  const bracket = buckets.find((bucket) => bucket.active);
+  const medianDelta = median ? ((edpi - median) / median) * 100 : 0;
+  const benchmarks = [
+    { label: "Median", value: median },
+    { label: "Average", value: 254 },
+    { label: "Low control", value: 160 },
+    { label: "Fast entry", value: 320 },
+  ];
 
   return (
     <div className="page sensitivity-page">
@@ -148,6 +170,17 @@ export default function Sensitivity() {
               />
             </label>
           </div>
+          <div className="benchmark-row">
+            <span>Try a pro benchmark</span>
+            {benchmarks.map((benchmark) => (
+              <button
+                key={benchmark.label}
+                onClick={() => setSensitivity(Number((benchmark.value / dpi).toFixed(3)))}
+              >
+                {benchmark.label} · {benchmark.value}
+              </button>
+            ))}
+          </div>
           <div className="edpi-readout">
             <div>
               <span>Your eDPI</span>
@@ -173,6 +206,31 @@ export default function Sensitivity() {
                 <em>{bucket.count}</em>
               </div>
             ))}
+          </div>
+          <div className="sens-position">
+            <div>
+              <span>Your bracket</span>
+              <strong>{bracket?.label ?? "-"}</strong>
+              <em>{bracket?.count ?? 0} players</em>
+            </div>
+            <div>
+              <span>Near your sens</span>
+              <strong>{((nearCount / PROS.length) * 100).toFixed(1)}%</strong>
+              <em>{nearCount} within ±5%</em>
+            </div>
+            <div>
+              <span>Vs. median</span>
+              <strong className={medianDelta >= 0 ? "up" : "down"}>
+                {medianDelta >= 0 ? "+" : ""}
+                {medianDelta.toFixed(1)}%
+              </strong>
+              <em>median {median} eDPI</em>
+            </div>
+            <div>
+              <span>Closest pro</span>
+              <strong>{nearest?.player ?? "-"}</strong>
+              <em>{nearest ? `${nearest.edpi} eDPI` : "no match"}</em>
+            </div>
           </div>
         </section>
 
@@ -219,6 +277,16 @@ export default function Sensitivity() {
             Conversions use each game's published yaw rate and are rounded for practical
             use. Always confirm in the range.
           </p>
+          <div className="conversion-list">
+            <span className="panel-label">Your VALORANT sens elsewhere</span>
+            {conversions.map((item) => (
+              <div className="conversion-row" key={item.id}>
+                <span>{item.name}</span>
+                <strong className="tnum">{item.value.toFixed(3)}</strong>
+                <em>{item.distance.toFixed(1)} cm/360</em>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
 
@@ -232,23 +300,30 @@ export default function Sensitivity() {
             <Trophy size={19} className="panel-icon" />
           </div>
           <div className="closest-list">
-            {closest.map((pro) => (
-              <div className="closest-row" key={`${pro.player}-${pro.team}`}>
-                <span className="closest-avatar">{pro.player.slice(0, 2).toUpperCase()}</span>
-                <div>
-                  <strong>{pro.player}</strong>
-                  <span>
-                    {pro.team} · {pro.country}
-                  </span>
+            {closest.map((pro) => {
+              const diff = ((pro.edpi - edpi) / Math.max(1, edpi)) * 100;
+              return (
+                <div className="closest-row" key={`${pro.player}-${pro.team}`}>
+                  <span className="closest-avatar">{pro.player.slice(0, 2).toUpperCase()}</span>
+                  <div>
+                    <strong>{pro.player}</strong>
+                    <span>
+                      {pro.team} · {pro.country}
+                    </span>
+                  </div>
+                  <div className="closest-values">
+                    <strong>{pro.edpi} eDPI</strong>
+                    <span>
+                      {pro.dpi} DPI · {pro.sensitivity}
+                    </span>
+                  </div>
+                  <em className={cn("closest-diff", diff >= 0 ? "up" : "down")}>
+                    {diff >= 0 ? "+" : ""}
+                    {diff.toFixed(1)}%
+                  </em>
                 </div>
-                <div className="closest-values">
-                  <strong>{pro.edpi} eDPI</strong>
-                  <span>
-                    {pro.dpi} DPI · {pro.sensitivity}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

@@ -23,8 +23,25 @@ export function CommandPalette({
 }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [rendered, setRendered] = useState(open);
+  const [closing, setClosing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setRendered(true);
+      setClosing(false);
+      return;
+    }
+    if (!rendered) return;
+    setClosing(true);
+    const timer = window.setTimeout(() => {
+      setRendered(false);
+      setClosing(false);
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [open, rendered]);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -64,7 +81,7 @@ export function CommandPalette({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, open]);
 
-  if (!open) return null;
+  if (!rendered) return null;
 
   function select(index: number) {
     const entry = rows[index];
@@ -79,9 +96,12 @@ export function CommandPalette({
   }, {});
 
   return (
-    <div className="command-overlay" onMouseDown={onClose}>
+    <div
+      className={cn("command-overlay", closing && "closing")}
+      onMouseDown={onClose}
+    >
       <div
-        className="command-panel"
+        className={cn("command-panel", closing && "closing")}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"

@@ -418,9 +418,11 @@ export default function App() {
             </div>
           }
         >
-          <ErrorBoundary key={page}>
-            <Page page={page} />
-          </ErrorBoundary>
+          <div className="page-swap" key={page}>
+            <ErrorBoundary>
+              <Page page={page} />
+            </ErrorBoundary>
+          </div>
         </Suspense>
       </main>
 

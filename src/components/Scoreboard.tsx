@@ -1,5 +1,7 @@
-import { AlertTriangle, Check, Loader2, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Check, Loader2, RefreshCw, Share2 } from "lucide-react";
 import { api, Player, TeamStats } from "../lib/api";
+import { copyText } from "../lib/clipboard";
 import { cn, num, pct } from "../lib/format";
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -9,6 +11,16 @@ function Stat({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function oppositeSide(side: string | null | undefined) {
+  if (!side) return null;
+  const label = side.toLowerCase();
+  if (label.includes("attack")) return side.replace(/attack/i, "Defense");
+  if (label.includes("defense") || label.includes("defence")) {
+    return side.replace(/defen[cs]e/i, "Attack");
+  }
+  return null;
 }
 
 function TeamHeader({
@@ -108,6 +120,8 @@ function Row({ player, rank, onSelect }: { player: Player; rank: number; onSelec
         </span>
         <span className="rank-sub">
           {player.rr > 0 ? `${player.rr} RR` : "unrated"}
+          {player.leaderboard > 0 && <span>#{player.leaderboard.toLocaleString()}</span>}
+          {player.previousRank && <span>prev {player.previousRank}</span>}
           {player.peakRankTier > player.rankTier && (
             <span className="peak">
               peak {player.peakRank}
@@ -116,16 +130,16 @@ function Row({ player, rank, onSelect }: { player: Player; rank: number; onSelec
           )}
         </span>
       </span>
-      <span className="metric-cell tnum">
+      <span className="metric-cell tnum kd">
         <strong>{num(player.kd)}</strong>
         <span>K/D</span>
         <i style={{ width: `${acc ?? 0}%` }} />
       </span>
-      <span className="metric-cell tnum">
+      <span className="metric-cell tnum hs">
         <strong>{pct(player.hsPct)}</strong>
         <span>HS</span>
       </span>
-      <span className="metric-cell tnum">
+      <span className="metric-cell tnum wr">
         <strong>{pct(player.winRate)}</strong>
         <span>{player.games ? `${player.games} games` : "win rate"}</span>
       </span>
@@ -155,6 +169,34 @@ export function Scoreboard({
     (team) => (board.teams?.[team]?.length ?? 0) > 0,
   );
   const isLobby = board.state === "MENUS";
+  const [copied, setCopied] = useState(false);
+  const partyRows = (board.parties ?? [])
+    .filter((party) => party.size > 1)
+    .map((party) => {
+      const members = board.players.filter((player) => player.party?.id === party.id);
+      const team = members[0]?.team;
+      return {
+        ...party,
+        team: team === selfTeam ? "your team" : "enemy team",
+      };
+    });
+
+  async function shareBoard() {
+    const lines = [
+      `${board.map ?? "Lobby"} · ${board.mode}${board.score ? ` · ${board.score.ally}:${board.score.enemy}` : ""}`,
+      ...ordered.map((team) => {
+        const players = board.teams?.[team] ?? [];
+        const label = team === selfTeam ? "Your team" : "Enemy team";
+        return `${label}: ${players
+          .map((player) => `${player.name} (${player.rank}${player.rr > 0 ? ` ${player.rr} RR` : ""})`)
+          .join(", ")}`;
+      }),
+    ];
+    if (await copyText(lines.join("\n"))) {
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    }
+  }
 
   return (
     <section className="board">
@@ -172,6 +214,7 @@ export function Scoreboard({
               {board.stateLabel}
               <span className="slash">/</span>
               {board.mode}
+              {board.source === "demo" && <span className="demo-badge">demo data</span>}
               {board.matchId && !isLobby && (
                 <span className="match-id">{board.matchId.slice(0, 8)}</span>
               )}
@@ -206,6 +249,9 @@ export function Scoreboard({
             <button className="icon-button" onClick={onRefresh} title="Refresh scoreboard">
               <RefreshCw size={16} className={refreshing ? "spin" : ""} />
             </button>
+            <button className="icon-button" onClick={() => void shareBoard()} title="Copy lobby summary">
+              {copied ? <Check size={16} /> : <Share2 size={16} />}
+            </button>
           </div>
         </div>
         {board.winProb !== null && (
@@ -218,6 +264,17 @@ export function Scoreboard({
               <b style={{ left: `${board.winProb}%` }} />
             </div>
             <span className="wp-note">rank + recent form</span>
+          </div>
+        )}
+        {partyRows.length > 0 && (
+          <div className="party-legend">
+            <span className="panel-label">Parties</span>
+            {partyRows.map((party) => (
+              <span className="party-chip" key={party.id}>
+                <i style={{ background: party.color }} />
+                {party.size}-stack · {party.team}
+              </span>
+            ))}
           </div>
         )}
       </header>
@@ -236,7 +293,7 @@ export function Scoreboard({
             <TeamHeader
               name={isLobby ? "Lobby" : team}
               stats={board.teamStats?.[team]}
-              side={board.side}
+              side={isLobby ? null : team === selfTeam ? board.side : oppositeSide(board.side)}
               score={board.score ? (team === selfTeam ? board.score.ally : board.score.enemy) : null}
               isSelf={team === selfTeam}
             />

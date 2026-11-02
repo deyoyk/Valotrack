@@ -8,7 +8,8 @@ import {
   Swords,
   UserRound,
 } from "lucide-react";
-import { api, CareerMatch, CareerProfile, Player } from "../lib/api";
+import { api, Agent, CareerMatch, CareerProfile, Player } from "../lib/api";
+import { demoProfile } from "../lib/demo";
 import { cn, formatDate, num, pct } from "../lib/format";
 import { Modal } from "./Modal";
 
@@ -29,10 +30,14 @@ export function ProfileModal({
   player,
   onClose,
   onMatch,
+  demo,
+  agents = [],
 }: {
   player: Player;
   onClose: () => void;
   onMatch: (match: CareerMatch) => void;
+  demo?: boolean;
+  agents?: Agent[];
 }) {
   const [profile, setProfile] = useState<CareerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +47,12 @@ export function ProfileModal({
     let cancelled = false;
     setProfile(null);
     setError(null);
+    if (demo) {
+      setProfile(demoProfile(player, agents));
+      return () => {
+        cancelled = true;
+      };
+    }
     api
       .profile(player.puuid)
       .then((data) => {
@@ -55,7 +66,7 @@ export function ProfileModal({
     return () => {
       cancelled = true;
     };
-  }, [player.puuid]);
+  }, [agents, demo, player]);
 
   const encounters = profile?.encounter;
   const trackerUrl = `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(

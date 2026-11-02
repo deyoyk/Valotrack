@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Check, Loader2, Save, Swords } from "lucide-react";
-import { api, MatchDetail, MatchPlayer } from "../lib/api";
+import { api, Agent, MatchDetail, MatchPlayer } from "../lib/api";
+import { demoMatchDetail } from "../lib/demo";
 import { cn, num, pct } from "../lib/format";
 import { Modal } from "./Modal";
 
@@ -74,11 +75,15 @@ export function MatchDetailModal({
   subject,
   title,
   onClose,
+  demo,
+  agents = [],
 }: {
   matchId: string;
   subject?: string;
   title: string;
   onClose: () => void;
+  demo?: boolean;
+  agents?: Agent[];
 }) {
   const [detail, setDetail] = useState<MatchDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -87,6 +92,7 @@ export function MatchDetailModal({
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    if (demo) return;
     api
       .matchNote(matchId)
       .then((value) => {
@@ -94,10 +100,16 @@ export function MatchDetailModal({
         setTags((value.tags ?? []).join(", "));
       })
       .catch(() => void 0);
-  }, [matchId]);
+  }, [demo, matchId]);
 
   useEffect(() => {
     let cancelled = false;
+    if (demo) {
+      setDetail(demoMatchDetail(matchId, agents));
+      return () => {
+        cancelled = true;
+      };
+    }
     api
       .matchDetail(matchId, subject)
       .then((value) => {
@@ -109,7 +121,7 @@ export function MatchDetailModal({
     return () => {
       cancelled = true;
     };
-  }, [matchId, subject]);
+  }, [agents, demo, matchId, subject]);
 
   const selfTeam = detail?.players.find((player) => player.isSubject)?.team;
   const teams = Object.keys(detail?.scores ?? {});
@@ -191,48 +203,50 @@ export function MatchDetailModal({
               highlight={team === selfTeam}
             />
           ))}
-          <div className="match-note">
-            <div className="match-note-head">
-              <span className="panel-label">Match note</span>
-              {saved && (
-                <span className="saved-note">
-                  <Check size={11} /> saved
-                </span>
-              )}
-            </div>
-            <textarea
-              value={note}
-              onChange={(event) => {
-                setNote(event.target.value);
-                setSaved(false);
-              }}
-              placeholder="What worked? What went wrong? What do you want to remember next time?"
-              rows={3}
-            />
-            <div className="match-note-foot">
-              <input
-                value={tags}
+          {!demo && (
+            <div className="match-note">
+              <div className="match-note-head">
+                <span className="panel-label">Match note</span>
+                {saved && (
+                  <span className="saved-note">
+                    <Check size={11} /> saved
+                  </span>
+                )}
+              </div>
+              <textarea
+                value={note}
                 onChange={(event) => {
-                  setTags(event.target.value);
+                  setNote(event.target.value);
                   setSaved(false);
                 }}
-                placeholder="tags: clutch, retake, aim"
+                placeholder="What worked? What went wrong? What do you want to remember next time?"
+                rows={3}
               />
-              <button
-                className="button small"
-                onClick={async () => {
-                  await api.matchNoteUpdate(
-                    matchId,
-                    note,
-                    tags.split(",").map((tag) => tag.trim()).filter(Boolean),
-                  );
-                  setSaved(true);
-                }}
-              >
-                <Save size={12} /> Save note
-              </button>
+              <div className="match-note-foot">
+                <input
+                  value={tags}
+                  onChange={(event) => {
+                    setTags(event.target.value);
+                    setSaved(false);
+                  }}
+                  placeholder="tags: clutch, retake, aim"
+                />
+                <button
+                  className="button small"
+                  onClick={async () => {
+                    await api.matchNoteUpdate(
+                      matchId,
+                      note,
+                      tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+                    );
+                    setSaved(true);
+                  }}
+                >
+                  <Save size={12} /> Save note
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </Modal>

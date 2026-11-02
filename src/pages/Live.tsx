@@ -10,7 +10,9 @@ import {
   ShieldCheck,
   WifiOff,
 } from "lucide-react";
-import { api, CareerMatch, Health, LiveBoard, Player } from "../lib/api";
+import { api, Agent, CareerMatch, Health, LiveBoard, Player } from "../lib/api";
+import { buildDemoBoard } from "../lib/demo";
+import { cn } from "../lib/format";
 import { usePoll } from "../lib/usePoll";
 import { Scoreboard } from "../components/Scoreboard";
 import { ProfileModal } from "../components/ProfileModal";
@@ -25,6 +27,8 @@ export default function Live() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checkedAt, setCheckedAt] = useState<number>(Date.now());
+  const [demo, setDemo] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   const refresh = useCallback(async (quiet = false) => {
     if (!quiet) setRefreshing(true);
@@ -52,9 +56,15 @@ export default function Live() {
     void refresh(true);
   }, [refresh]);
 
+  useEffect(() => {
+    api.agents().then((catalog) => setAgents(catalog.agents)).catch(() => void 0);
+  }, []);
+
   usePoll(() => refresh(true), (health?.clientAvailable ? 4 : 6) * 1000);
 
   const connected = health?.clientAvailable ?? false;
+  const demoBoard = demo ? buildDemoBoard(agents) : null;
+  const shownBoard = demoBoard ?? board;
 
   return (
     <div className="page live-page">
@@ -78,6 +88,14 @@ export default function Live() {
             <Clock3 size={12} />
             checked {new Date(checkedAt).toLocaleTimeString()}
           </span>
+          <div className="head-buttons">
+            <button
+              className={cn("button small", demo && "active")}
+              onClick={() => setDemo((value) => !value)}
+            >
+              {demo ? "Exit demo" : "Preview demo lobby"}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -101,7 +119,7 @@ export default function Live() {
         </div>
       )}
 
-      {!connected && health && (
+      {!connected && health && !demo && (
         <section className="offline-grid">
           <div className="connect-card">
             <div className="connect-glow" />
@@ -163,9 +181,9 @@ export default function Live() {
         </section>
       )}
 
-      {connected && board && (
+      {shownBoard && (
         <Scoreboard
-          board={board}
+          board={shownBoard}
           onRefresh={() => refresh()}
           refreshing={refreshing}
           onPlayer={setSelected}
@@ -177,6 +195,8 @@ export default function Live() {
           player={selected}
           onClose={() => setSelected(null)}
           onMatch={setSelectedMatch}
+          demo={Boolean(demoBoard)}
+          agents={agents}
         />
       )}
 
@@ -186,10 +206,12 @@ export default function Live() {
           subject={selected?.puuid}
           title={`${selectedMatch.map} · ${selectedMatch.mode}`}
           onClose={() => setSelectedMatch(null)}
+          demo={Boolean(demoBoard)}
+          agents={agents}
         />
       )}
 
-      {connected && !board && !loading && (
+      {!shownBoard && !loading && connected && (
         <div className="center-state">
           <Loader2 size={20} className="spin" />
           <span>Waiting for the client session</span>

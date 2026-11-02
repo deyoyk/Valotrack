@@ -5214,7 +5214,7 @@ dependencies = [
 
 [[package]]
 name = "valotrack"
-version = "1.0.138"
+version = "1.0.139"
 dependencies = [
  "axum",
  "base64 0.22.1",

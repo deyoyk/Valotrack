@@ -129,6 +129,15 @@ summary:focus-visible,
   gap: 22px;
 }
 
+.nav-system {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
 .nav-label {
   padding: 0 12px 7px;
   font-size: 10.5px;
@@ -2112,8 +2121,8 @@ summary:focus-visible,
 
 .encounter-columns,
 .encounter-row {
-  grid-template-columns: 34px minmax(160px, 1.4fr) minmax(120px, 0.8fr) 70px 70px 120px 68px 64px 90px;
-  gap: 10px;
+  grid-template-columns: minmax(190px, 1.5fr) minmax(110px, 0.8fr) 72px 72px 150px 64px 58px 88px;
+  gap: 12px;
 }
 
 .encounter-columns {
@@ -2839,6 +2848,14 @@ html[data-reduce-motion="true"] *::after {
     gap: 16px;
   }
 
+  .nav-system {
+    width: 100%;
+    align-items: center;
+    gap: 2px;
+    margin-top: 6px;
+    padding-top: 10px;
+  }
+
   .nav-group {
     width: 100%;
     align-items: center;
@@ -2872,6 +2889,16 @@ html[data-reduce-motion="true"] *::after {
 
   .player-columns span:nth-child(7),
   .player-row .metric-cell.hs {
+    display: none;
+  }
+
+  .encounter-columns,
+  .encounter-row {
+    grid-template-columns: minmax(170px, 1.4fr) minmax(100px, 0.8fr) 62px 62px 140px 58px 54px;
+  }
+
+  .encounter-columns span:nth-child(8),
+  .encounter-date {
     display: none;
   }
 
@@ -2980,6 +3007,15 @@ html[data-reduce-motion="true"] *::after {
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   }
 
+  .encounter-table {
+    overflow-x: auto;
+  }
+
+  .encounter-columns,
+  .encounter-row {
+    min-width: 780px;
+  }
+
   .overview-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -3049,6 +3085,10 @@ html[data-reduce-motion="true"] *::after {
 
   .nav-item:not(.active) {
     opacity: 0.7;
+  }
+
+  .nav-system {
+    display: none;
   }
 
   .sidebar-foot {
@@ -3144,6 +3184,19 @@ html[data-reduce-motion="true"] *::after {
   .sens-columns,
   .store-lower,
   .profile-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-match {
+    grid-template-columns: 34px minmax(0, 1fr) 70px;
+  }
+
+  .overview-match > span:nth-child(3),
+  .overview-match > span:nth-child(4) {
+    display: none;
+  }
+
+  .overview-facts {
     grid-template-columns: 1fr;
   }
 

@@ -387,8 +387,11 @@ export default function App() {
           <NavGroup label="Armory" items={armoryNav} active={page} onSelect={navigate} />
           <NavGroup label="Intel" items={intelNav} active={page} onSelect={navigate} />
           <NavGroup label="Tools" items={toolsNav} active={page} onSelect={navigate} />
-          <NavGroup label="System" items={systemNav} active={page} onSelect={navigate} />
         </nav>
+
+        <div className="nav-system">
+          <NavGroup label="System" items={systemNav} active={page} onSelect={navigate} />
+        </div>
 
         <div className="sidebar-foot">
           <span className="dot" />

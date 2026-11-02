@@ -5,6 +5,7 @@ import {
   Crosshair as CrosshairIcon,
   Heart,
   Search,
+  Shuffle,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -32,6 +33,7 @@ type Entry = {
 const ALL = crosshairsData as Entry[];
 const FAVORITES_KEY = "valotrack-crosshair-favorites";
 const CUSTOM_KEY = "valotrack-custom-crosshairs";
+const RECENT_KEY = "valotrack-crosshair-recent";
 
 function loadCustom(): Entry[] {
   try {
@@ -72,7 +74,15 @@ function useFavorites() {
   };
 }
 
-function CopyButton({ code, label = "Copy" }: { code: string; label?: string }) {
+function CopyButton({
+  code,
+  label = "Copy",
+  onCopy,
+}: {
+  code: string;
+  label?: string;
+  onCopy?: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -80,6 +90,7 @@ function CopyButton({ code, label = "Copy" }: { code: string; label?: string }) 
       onClick={async (event) => {
         event.stopPropagation();
         if (await copyText(code)) {
+          onCopy?.();
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1300);
         }
@@ -136,12 +147,14 @@ function DetailModal({
   onBuild,
   favorite,
   toggleFavorite,
+  onCopy,
 }: {
   entry: Entry;
   onClose: () => void;
   onBuild: (settings: CrosshairSettings) => void;
   favorite: boolean;
   toggleFavorite: () => void;
+  onCopy: () => void;
 }) {
   const [scene, setScene] = useState("ascent");
   const [state, setState] = useState<"resting" | "moving" | "firing">("resting");
@@ -169,7 +182,7 @@ function DetailModal({
           </p>
           <code className="code-box">{entry.code}</code>
           <div className="detail-actions">
-            <CopyButton code={entry.code} label="Copy code" />
+            <CopyButton code={entry.code} label="Copy code" onCopy={onCopy} />
             <button className={cn("button small", favorite && "favorited")} onClick={toggleFavorite}>
               <Heart size={12} fill={favorite ? "currentColor" : "none"} />
               {favorite ? "Saved" : "Favorite"}
@@ -456,12 +469,21 @@ function CompareModal({
 export default function Crosshairs() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
-  const [sort, setSort] = useState<"popular" | "name">("popular");
+  const [style, setStyle] = useState("All styles");
+  const [sort, setSort] = useState<"popular" | "recent" | "name">("popular");
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [detail, setDetail] = useState<Entry | null>(null);
   const [builder, setBuilder] = useState<CrosshairSettings | null>(null);
   const [compare, setCompare] = useState(false);
   const [custom, setCustom] = useState<Entry[]>(loadCustom);
+  const [recent, setRecent] = useState<number[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+      return Array.isArray(raw) ? raw.filter((id) => typeof id === "number") : [];
+    } catch {
+      return [];
+    }
+  });
   const { favorites, toggle, isFavorite } = useFavorites();
   const entries = useMemo(() => [...ALL, ...custom], [custom]);
 
@@ -472,16 +494,44 @@ export default function Crosshairs() {
 
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return entries.filter((entry) => {
-      if (category !== "All" && entry.cat !== category) return false;
-      if (onlyFavorites && !favorites.includes(entry.id)) return false;
-      if (!needle) return true;
-      return entry.name.toLowerCase().includes(needle) || entry.code.includes(needle);
-    }).sort((a, b) => {
-      if (sort === "name") return a.name.localeCompare(b.name);
-      return b.copied - a.copied;
+    return entries
+      .filter((entry) => {
+        if (category !== "All" && entry.cat !== category) return false;
+        if (onlyFavorites && !favorites.includes(entry.id)) return false;
+        if (style !== "All styles") {
+          const settings = parseCrosshair(entry.code);
+          if (style === "Dot" && !settings.dot) return false;
+          if (style === "Cross" && (settings.dot || settings.inner.length === 0)) return false;
+          if (style === "Outline" && !settings.outlines) return false;
+          if (style === "Custom color" && settings.colorIndex !== 8) return false;
+        }
+        if (!needle) return true;
+        return entry.name.toLowerCase().includes(needle) || entry.code.includes(needle);
+      })
+      .sort((a, b) => {
+        if (sort === "name") return a.name.localeCompare(b.name);
+        if (sort === "recent") {
+          const ai = recent.indexOf(a.id);
+          const bi = recent.indexOf(b.id);
+          return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+        }
+        return b.copied - a.copied;
+      });
+  }, [category, entries, favorites, onlyFavorites, recent, search, sort, style]);
+
+  function recordCopy(id: number) {
+    setRecent((current) => {
+      const next = [id, ...current.filter((value) => value !== id)].slice(0, 30);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      return next;
     });
-  }, [category, entries, favorites, onlyFavorites, search, sort]);
+  }
+
+  function shuffle() {
+    const pool = rows.length ? rows : entries;
+    const entry = pool[Math.floor(Math.random() * pool.length)];
+    if (entry) setDetail(entry);
+  }
 
   const proCount = useMemo(() => ALL.filter((entry) => entry.cat === "Pro").length, []);
 
@@ -504,6 +554,9 @@ export default function Crosshairs() {
             {favorites.length} favorites · {rows.length} shown
           </span>
           <div className="head-buttons">
+            <button className="button small" onClick={shuffle}>
+              <Shuffle size={13} /> Shuffle
+            </button>
             <button
               className={cn("button small", compare && "active")}
               onClick={() => setCompare(true)}
@@ -540,6 +593,17 @@ export default function Crosshairs() {
             </button>
           ))}
         </div>
+        <div className="filter-tabs style-tabs">
+          {["All styles", "Dot", "Cross", "Outline", "Custom color"].map((item) => (
+            <button
+              key={item}
+              className={style === item ? "active" : ""}
+              onClick={() => setStyle(item)}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
         <div className="toolbar-right">
           <button
             className={cn("icon-text-button", onlyFavorites && "active")}
@@ -553,6 +617,7 @@ export default function Crosshairs() {
             onChange={(event) => setSort(event.target.value as "popular" | "name")}
           >
             <option value="popular">Most copied</option>
+            <option value="recent">Recently copied</option>
             <option value="name">Name A-Z</option>
           </select>
         </div>
@@ -588,7 +653,7 @@ export default function Crosshairs() {
                   <strong>{entry.name}</strong>
                   <span>{entry.copied.toLocaleString()} copies</span>
                 </div>
-                <CopyButton code={entry.code} />
+                <CopyButton code={entry.code} onCopy={() => recordCopy(entry.id)} />
               </div>
             </button>
           );
@@ -615,6 +680,7 @@ export default function Crosshairs() {
           }}
           favorite={isFavorite(detail.id)}
           toggleFavorite={() => toggle(detail.id)}
+          onCopy={() => recordCopy(detail.id)}
         />
       )}
 

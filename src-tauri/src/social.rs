@@ -22,6 +22,14 @@ fn private_presence(presence: &Value) -> Value {
 
 fn presence_summary(presence: &Value) -> Value {
     let private = private_presence(presence);
+    let raw_state = presence.get("state").and_then(Value::as_str).unwrap_or("offline");
+    let raw_product = presence.get("product").and_then(Value::as_str).unwrap_or("");
+    let stale_mobile = raw_state == "mobile"
+        && !raw_product.is_empty()
+        && raw_product != "valorant"
+        && private.as_object().map(|value| value.is_empty()).unwrap_or(true);
+    let state = if stale_mobile { "offline" } else { raw_state };
+    let product = if stale_mobile { "" } else { raw_product };
     let party = private.get("partyPresenceData").unwrap_or(&private);
     let match_data = private.get("matchPresenceData").unwrap_or(&private);
     let map_id = match_data
@@ -39,8 +47,8 @@ fn presence_summary(presence: &Value) -> Value {
         .or_else(|| private.get("queueId").and_then(Value::as_str))
         .unwrap_or("");
     json!({
-        "state": presence.get("state").and_then(Value::as_str).unwrap_or("offline"),
-        "product": presence.get("product").and_then(Value::as_str).unwrap_or(""),
+        "state": state,
+        "product": product,
         "platform": presence.get("platform").and_then(Value::as_str).unwrap_or(""),
         "map": map,
         "queue": if queue_id.is_empty() { Value::Null } else { json!(catalog::mode_label(queue_id)) },
@@ -278,4 +286,33 @@ pub async fn remove_request(state: &Arc<AppState>, puuid: &str) -> Result<Value,
         )
         .await
         .map_err(|error| format!("Couldn't remove the request: {error}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stale_mobile_league_presence_is_offline() {
+        let summary = presence_summary(&json!({
+            "puuid": "friend",
+            "state": "mobile",
+            "product": "league_of_legends",
+            "private": ""
+        }));
+        assert_eq!(summary["state"], "offline");
+        assert_eq!(summary["product"], "");
+    }
+
+    #[test]
+    fn mobile_valorant_presence_stays_online() {
+        let summary = presence_summary(&json!({
+            "puuid": "friend",
+            "state": "mobile",
+            "product": "valorant",
+            "private": ""
+        }));
+        assert_eq!(summary["state"], "mobile");
+        assert_eq!(summary["product"], "valorant");
+    }
 }

@@ -41,6 +41,16 @@ function friendName(friend: SocialFriend) {
   return `${name}${tag ? `#${tag}` : ""}`;
 }
 
+function presenceLabel(friend: SocialFriend) {
+  if (friend.presence.queue) {
+    return `${friend.presence.queue}${friend.presence.map ? ` · ${friend.presence.map}` : ""}`;
+  }
+  if (friend.presence.state === "mobile") return "On mobile";
+  if (friend.presence.product === "valorant") return "VALORANT";
+  if (friend.presence.product === "league_of_legends") return "League of Legends";
+  return friend.presence.product || friend.presence.state;
+}
+
 export default function Social() {
   const [data, setData] = useState<SocialSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -274,9 +284,7 @@ export default function Social() {
                   <strong>{friendName(friend)}</strong>
                   <em>
                     {friend.online
-                      ? friend.presence.queue
-                        ? `${friend.presence.queue}${friend.presence.map ? ` · ${friend.presence.map}` : ""}`
-                        : friend.presence.product || friend.presence.state
+                      ? presenceLabel(friend)
                       : `last seen ${relativeTime(friend.lastOnline)}`}
                   </em>
                 </span>

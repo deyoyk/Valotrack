@@ -164,6 +164,9 @@ function NavGroup({
             key={item.id}
             className={cn("nav-item", active === item.id && "active")}
             onClick={() => onSelect(item.id)}
+            title={item.label}
+            aria-label={item.label}
+            aria-current={active === item.id ? "page" : undefined}
           >
             <Icon size={17} strokeWidth={1.8} />
             <span>{item.label}</span>

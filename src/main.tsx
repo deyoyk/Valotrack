@@ -8,12 +8,17 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { UpdaterProvider } from "./lib/updater";
+import { applyPreferences, loadPreferences } from "./lib/preferences";
 import "./styles.css";
 import "./styles-tools.css";
 import "./styles-tools2.css";
 import "./styles-replays.css";
 import "./styles-offline.css";
 import "./styles-advanced.css";
+import "./styles-readability.css";
+import "./styles-refresh.css";
+
+applyPreferences(loadPreferences());
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

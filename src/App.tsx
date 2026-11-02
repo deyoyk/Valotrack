@@ -6,6 +6,7 @@ import {
   Download,
   Grid3X3,
   Layers,
+  LayoutDashboard,
   Loader2,
   Map as MapIcon,
   MessageSquare,
@@ -14,7 +15,9 @@ import {
   Radio,
   RefreshCw,
   ScrollText,
+  Search,
   Settings as SettingsIcon,
+  ShieldCheck,
   ShoppingBag,
   Smartphone,
   Swords,
@@ -26,12 +29,14 @@ import {
   X,
 } from "lucide-react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { CommandPalette, type CommandEntry } from "./components/CommandPalette";
 import { api } from "./lib/api";
 import { cn } from "./lib/format";
 import { useUpdater } from "./lib/updater";
 import { displayVersion } from "./lib/version";
 
 const Live = lazy(() => import("./pages/Live"));
+const Overview = lazy(() => import("./pages/Overview"));
 const Social = lazy(() => import("./pages/Social"));
 const Matchmaking = lazy(() => import("./pages/Matchmaking"));
 const Performance = lazy(() => import("./pages/Performance"));
@@ -52,8 +57,10 @@ const Loadout = lazy(() => import("./pages/Loadout"));
 const Contracts = lazy(() => import("./pages/Contracts"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Account = lazy(() => import("./pages/Account"));
+const Safety = lazy(() => import("./pages/Safety"));
 
 type Page =
+  | "overview"
   | "live"
   | "social"
   | "performance"
@@ -74,7 +81,8 @@ type Page =
   | "ascii"
   | "offline"
   | "remote"
-  | "settings";
+  | "settings"
+  | "safety";
 
 type NavItem = {
   id: Page;
@@ -83,6 +91,7 @@ type NavItem = {
 };
 
 const playNav: NavItem[] = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "live", label: "Live", icon: Radio },
   { id: "social", label: "Social", icon: MessageSquare },
   { id: "performance", label: "Performance", icon: Activity },
@@ -115,13 +124,23 @@ const toolsNav: NavItem[] = [
 
 const systemNav: NavItem[] = [
   { id: "remote", label: "Phone Remote", icon: Smartphone },
+  { id: "safety", label: "Safety & Privacy", icon: ShieldCheck },
   { id: "settings", label: "Settings", icon: SettingsIcon },
+];
+
+const ALL_NAV = [...playNav, ...armoryNav, ...intelNav, ...toolsNav, ...systemNav];
+
+const NAV_GROUPS = [
+  { label: "Play", items: playNav },
+  { label: "Armory", items: armoryNav },
+  { label: "Intel", items: intelNav },
+  { label: "Tools", items: toolsNav },
+  { label: "System", items: systemNav },
 ];
 
 function readPage(): Page {
   const raw = location.hash.replace("#", "");
-  const all = [...playNav, ...armoryNav, ...intelNav, ...toolsNav, ...systemNav];
-  return (all.find((item) => item.id === raw)?.id ?? "live") as Page;
+  return (ALL_NAV.find((item) => item.id === raw)?.id ?? "overview") as Page;
 }
 
 function NavGroup({
@@ -157,6 +176,8 @@ function NavGroup({
 
 function Page({ page }: { page: Page }) {
   switch (page) {
+    case "overview":
+      return <Overview />;
     case "live":
       return <Live />;
     case "social":
@@ -197,6 +218,8 @@ function Page({ page }: { page: Page }) {
       return <Offline />;
     case "remote":
       return <Remote />;
+    case "safety":
+      return <Safety />;
     case "settings":
       return <Settings />;
     default:
@@ -268,6 +291,7 @@ export default function App() {
   const [page, setPage] = useState<Page>(readPage);
   const [appVersion, setAppVersion] = useState("");
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
     void getVersion().then(setAppVersion).catch(() => void 0);
@@ -307,10 +331,32 @@ export default function App() {
     document.querySelector<HTMLElement>(".main")?.scrollTo({ top: 0 });
   }, [page]);
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setPaletteOpen((value) => !value);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   function navigate(next: Page) {
     location.hash = next;
     setPage(next);
   }
+
+  const commands: CommandEntry[] = NAV_GROUPS.flatMap((group) =>
+    group.items.map((item) => ({
+      id: item.id,
+      label: item.label,
+      group: group.label,
+      hint: page === item.id ? "current" : "page",
+      icon: item.icon,
+      run: () => navigate(item.id),
+    })),
+  );
 
   return (
     <div className="app-shell">
@@ -326,6 +372,12 @@ export default function App() {
             <div className="brand-sub">local intelligence</div>
           </div>
         </div>
+
+        <button className="command-trigger" onClick={() => setPaletteOpen(true)}>
+          <Search size={16} />
+          <span>Search</span>
+          <kbd>Ctrl K</kbd>
+        </button>
 
         <nav className="nav">
           <NavGroup label="Play" items={playNav} active={page} onSelect={navigate} />
@@ -348,7 +400,7 @@ export default function App() {
         </div>
       </aside>
 
-      <main className="main">
+      <main className={cn("main", `page-${page}`)}>
         <UpdateBanner />
         <Suspense
           fallback={
@@ -365,6 +417,8 @@ export default function App() {
           </ErrorBoundary>
         </Suspense>
       </main>
+
+      <CommandPalette open={paletteOpen} entries={commands} onClose={() => setPaletteOpen(false)} />
     </div>
   );
 }

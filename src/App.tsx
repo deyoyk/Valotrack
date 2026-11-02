@@ -132,9 +132,9 @@ const ALL_NAV = [...playNav, ...armoryNav, ...intelNav, ...toolsNav, ...systemNa
 
 const NAV_GROUPS = [
   { label: "Play", items: playNav },
+  { label: "Tools", items: toolsNav },
   { label: "Armory", items: armoryNav },
   { label: "Intel", items: intelNav },
-  { label: "Tools", items: toolsNav },
   { label: "System", items: systemNav },
 ];
 
@@ -384,9 +384,9 @@ export default function App() {
 
         <nav className="nav">
           <NavGroup label="Play" items={playNav} active={page} onSelect={navigate} />
+          <NavGroup label="Tools" items={toolsNav} active={page} onSelect={navigate} />
           <NavGroup label="Armory" items={armoryNav} active={page} onSelect={navigate} />
           <NavGroup label="Intel" items={intelNav} active={page} onSelect={navigate} />
-          <NavGroup label="Tools" items={toolsNav} active={page} onSelect={navigate} />
         </nav>
 
         <div className="nav-system">

@@ -126,7 +126,8 @@ summary:focus-visible,
 }
 
 .nav {
-  gap: 22px;
+  gap: 10px;
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
 }
 
 .nav-system {
@@ -139,19 +140,20 @@ summary:focus-visible,
 }
 
 .nav-label {
-  padding: 0 12px 7px;
+  padding: 0 12px 4px;
   font-size: 10.5px;
   letter-spacing: 0.16em;
   color: #7f8693;
 }
 
 .nav-item {
-  min-height: 38px;
+  min-height: 32px;
   gap: 11px;
-  padding: 9px 12px;
+  padding: 6px 12px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.2;
   color: #a7aeba;
 }
 
@@ -3005,6 +3007,7 @@ html[data-reduce-motion="true"] *::after {
     width: 100%;
     align-items: center;
     gap: 16px;
+    mask-image: none;
   }
 
   .nav-system {

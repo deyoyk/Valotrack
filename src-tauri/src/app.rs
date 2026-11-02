@@ -78,6 +78,36 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub fn new_headless(data_dir: PathBuf) -> Result<Self, String> {
+        std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+        let settings = Settings::load(&data_dir);
+        let http = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .user_agent("Valotrack/0.1")
+            .timeout(Duration::from_secs(12))
+            .pool_max_idle_per_host(16)
+            .build()
+            .map_err(|e| e.to_string())?;
+        let valo = Valo::new(http.clone());
+        let offline = crate::offline_client::OfflineClient::new(&data_dir, http.clone());
+        Ok(Self {
+            data_dir,
+            http: http.clone(),
+            settings: RwLock::new(settings),
+            live_cache: Mutex::new(None),
+            json_cache: Mutex::new(HashMap::new()),
+            riot: RiotRuntime::new(http),
+            valo,
+            stats: Mutex::new(HashMap::new()),
+            ranks: Mutex::new(HashMap::new()),
+            details: Mutex::new(HashMap::new()),
+            meta: Mutex::new(HashMap::new()),
+            instalock: Arc::new(crate::instalock::InstalockState::new()),
+            offline,
+            remote: Arc::new(crate::remote::RemoteState::new()),
+        })
+    }
+
     pub fn new(app: &AppHandle) -> Result<Self, String> {
         let data_dir = app
             .path()

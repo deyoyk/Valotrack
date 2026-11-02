@@ -6,6 +6,7 @@ mod account;
 mod app;
 mod career;
 mod catalog;
+pub mod cli;
 mod commands;
 mod content;
 mod contracts;

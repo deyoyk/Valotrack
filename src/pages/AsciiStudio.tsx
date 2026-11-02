@@ -27,6 +27,7 @@ type Art = { t: string; g: string; a: string; s: string };
 
 const GALLERY = asciiData as Art[];
 const FAVORITES_KEY = "valotrack-ascii-favorites";
+const RECENT_KEY = "valotrack-ascii-recent";
 const GRID_WIDTH = 30;
 const GRID_HEIGHT = 13;
 
@@ -39,7 +40,15 @@ function GalleryArt({ art }: { art: Art }) {
   );
 }
 
-function CopyArt({ text, label = "Copy" }: { text: string; label?: string }) {
+function CopyArt({
+  text,
+  label = "Copy",
+  onCopy,
+}: {
+  text: string;
+  label?: string;
+  onCopy?: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -47,6 +56,7 @@ function CopyArt({ text, label = "Copy" }: { text: string; label?: string }) {
       onClick={async (event) => {
         event.stopPropagation();
         if (await copyText(text)) {
+          onCopy?.();
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1300);
         }
@@ -263,9 +273,19 @@ export default function AsciiStudio() {
   const [tab, setTab] = useState<"gallery" | "creator">("gallery");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [sort, setSort] = useState<"featured" | "name" | "recent">("featured");
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(FAVORITES_KEY) ?? "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch {
+      return [];
+    }
+  });
+  const [recent, setRecent] = useState<string[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
       return Array.isArray(raw) ? raw : [];
     } catch {
       return [];
@@ -285,14 +305,31 @@ export default function AsciiStudio() {
     const needle = search.trim().toLowerCase();
     return GALLERY.filter((art) => {
       if (category !== "All" && art.g !== category) return false;
+      if (onlyFavorites && !favorites.includes(art.t)) return false;
       if (!needle) return true;
       return (
         art.t.toLowerCase().includes(needle) ||
         art.a.toLowerCase().includes(needle) ||
         art.g.toLowerCase().includes(needle)
       );
+    }).sort((a, b) => {
+      if (sort === "name") return a.t.localeCompare(b.t);
+      if (sort === "recent") {
+        const ai = recent.indexOf(a.t);
+        const bi = recent.indexOf(b.t);
+        return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+      }
+      return 0;
     });
-  }, [category, search]);
+  }, [category, favorites, onlyFavorites, recent, search, sort]);
+
+  function recordCopy(title: string) {
+    setRecent((current) => {
+      const next = [title, ...current.filter((value) => value !== title)].slice(0, 40);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
   return (
     <div className="page ascii-page">
@@ -343,6 +380,23 @@ export default function AsciiStudio() {
                 </button>
               ))}
             </div>
+            <button
+              className={cn("button small", onlyFavorites && "active")}
+              onClick={() => setOnlyFavorites((value) => !value)}
+            >
+              <Heart size={12} fill={onlyFavorites ? "currentColor" : "none"} /> Favorites
+            </button>
+            <select
+              className="small-select"
+              value={sort}
+              onChange={(event) =>
+                setSort(event.target.value as "featured" | "name" | "recent")
+              }
+            >
+              <option value="featured">Featured</option>
+              <option value="name">A–Z</option>
+              <option value="recent">Recently copied</option>
+            </select>
           </div>
           <div className="ascii-grid">
             {rows.map((art) => {
@@ -400,7 +454,11 @@ export default function AsciiStudio() {
               </span>
               <h2>{selected.t}</h2>
             </div>
-            <CopyArt text={artToChat(selected.s)} label="Copy chat art" />
+            <CopyArt
+              text={artToChat(selected.s)}
+              label="Copy chat art"
+              onCopy={() => recordCopy(selected.t)}
+            />
           </div>
           <div className="ascii-detail-art">
             <GalleryArt art={selected} />

@@ -17,6 +17,7 @@ import "./styles-offline.css";
 import "./styles-advanced.css";
 import "./styles-readability.css";
 import "./styles-refresh.css";
+import "./styles-live.css";
 
 applyPreferences(loadPreferences());
 

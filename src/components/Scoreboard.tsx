@@ -1,17 +1,17 @@
-import { useState } from "react";
-import { AlertTriangle, Check, Loader2, RefreshCw, Share2 } from "lucide-react";
+import { useState, type CSSProperties } from "react";
+import {
+  AlertTriangle,
+  Check,
+  Loader2,
+  RefreshCw,
+  Share2,
+  ShieldCheck,
+  Swords,
+  Users,
+} from "lucide-react";
 import { api, Player, TeamStats } from "../lib/api";
 import { copyText } from "../lib/clipboard";
 import { cn, num, pct } from "../lib/format";
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="team-stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
 
 function oppositeSide(side: string | null | undefined) {
   if (!side) return null;
@@ -23,132 +23,278 @@ function oppositeSide(side: string | null | undefined) {
   return null;
 }
 
-function TeamHeader({
-  name,
-  stats,
-  side,
-  score,
-  isSelf,
-}: {
-  name: string;
-  stats?: TeamStats;
-  side?: string | null;
-  score?: number | null;
-  isSelf: boolean;
-}) {
+function FormDots({ form }: { form: string[] }) {
+  if (!form.length) return null;
   return (
-    <div className={cn("team-head", isSelf && "self")}>
-      <div className="team-title">
-        <span className={cn("team-tag", isSelf ? "ally" : "enemy")}>
-          {isSelf ? "Your team" : "Enemy team"}
-        </span>
-        <strong>{name}</strong>
-        {side && <span className="side-pill">{side}</span>}
-      </div>
-      <div className="team-metrics">
-        {score !== null && score !== undefined && <span className="team-score">{score}</span>}
-        <Stat label="Avg rank" value={stats?.avgRank ?? "-"} />
-        <Stat label="K/D" value={num(stats?.avgKd)} />
-        <Stat label="Win rate" value={pct(stats?.avgWinRate)} />
-        {!!stats?.smurfCount && (
-          <span className="smurf-count">
-            <AlertTriangle size={12} /> {stats.smurfCount} smurf
-            {stats.smurfCount === 1 ? "" : "s"}
-          </span>
-        )}
-      </div>
-    </div>
+    <span className="duel-form" title="Recent form">
+      {form.slice(0, 5).map((result, index) => (
+        <i key={index} className={result === "W" ? "w" : "l"} />
+      ))}
+    </span>
   );
 }
 
-function Row({ player, rank, onSelect }: { player: Player; rank: number; onSelect?: (player: Player) => void }) {
-  const acc = player.kd === null ? null : Math.min(100, Math.max(8, (player.kd / 2.2) * 100));
+function Kpi({
+  label,
+  value,
+  color,
+  icon,
+  smurfs = false,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  icon?: string | null;
+  smurfs?: boolean;
+}) {
+  return (
+    <span className={cn("duel-kpi", smurfs && "smurfs")}>
+      {icon ? <img src={icon} alt="" loading="lazy" /> : null}
+      {smurfs ? <AlertTriangle size={12} /> : null}
+      <strong style={color ? { color } : undefined}>{value}</strong>
+      <em>{label}</em>
+    </span>
+  );
+}
+
+function PlayerCard({
+  player,
+  index,
+  showAgent,
+  onSelect,
+}: {
+  player: Player;
+  index: number;
+  showAgent: boolean;
+  onSelect?: (player: Player) => void;
+}) {
   return (
     <button
-      className={cn("player-row", player.isSelf && "self", player.smurf && "flagged")}
+      className={cn(
+        "duel-card",
+        player.isSelf && "self",
+        player.smurf && "flagged",
+        !showAgent && "no-agent",
+      )}
       onClick={() => onSelect?.(player)}
+      style={{ "--row-index": index } as CSSProperties}
       title={`Open ${player.name}'s profile`}
     >
       <span
-        className="party-rail"
+        className="duel-rail"
         style={{ background: player.party?.color ?? "transparent" }}
         title={player.party ? `Party ${player.party.number}` : "Solo"}
       />
-      <span className="rank-no tnum">{rank}</span>
-      <span className="agent-cell">
-        <span className="agent-frame">
-          {player.agentPortrait ? (
-            <img src={player.agentPortrait} alt={player.agent ?? "Agent"} loading="lazy" />
+      <span className="duel-rank">
+        <span className="duel-rank-line">
+          {player.rankIcon ? (
+            <img src={player.rankIcon} alt="" loading="lazy" />
           ) : (
-            <span className="agent-empty">?</span>
+            <span className="duel-rank-empty" />
           )}
+          <strong style={{ color: player.rankColor }}>{player.rank}</strong>
         </span>
-        <span className="agent-name">{player.agent ?? "Lobby"}</span>
+        <span className="duel-rank-sub">
+          {player.rr > 0 ? `${player.rr} RR` : "unrated"}
+          {player.rrEarned ? (
+            <b className={player.rrEarned > 0 ? "up" : "down"}>
+              {player.rrEarned > 0 ? "+" : ""}
+              {player.rrEarned}
+            </b>
+          ) : null}
+          {player.leaderboard > 0 ? <b>#{player.leaderboard.toLocaleString()}</b> : null}
+        </span>
+        {player.peakRankTier > 0 && (
+          <span className="duel-rank-peak">
+            peak {player.peakRank}
+            {player.peakAct ? ` · ${player.peakAct}` : ""}
+          </span>
+        )}
       </span>
-      <span className="player-main">
-        <span className="player-name-line">
+
+      <span className="duel-identity">
+        <span className="duel-name-line">
           <strong>{player.name}</strong>
-          {player.isSelf && <em>you</em>}
+          {player.isSelf && <em className="duel-you">you</em>}
           {player.smurf && (
-            <span className="smurf-badge" title={player.smurfReasons.join(" · ")}>
+            <em className="duel-smurf" title={player.smurfReasons.join(" · ")}>
               smurf
-            </span>
+            </em>
           )}
-          {player.selection === "locked" && <span className="lock-badge">locked</span>}
+          {player.selection === "locked" && <em className="duel-locked">locked</em>}
         </span>
-        <span className="player-sub">
-          {player.title ? <span className="title-text">{player.title}</span> : null}
+        <span className="duel-meta-line">
           {player.level > 0 && (
             <span>
               lvl {player.level}
               {player.levelHidden ? "+" : ""}
             </span>
           )}
-          {player.form.length > 0 && (
-            <span className="form-dots" title="Recent form">
-              {player.form.slice(0, 5).map((result, index) => (
-                <i key={index} className={result === "W" ? "w" : "l"} />
-              ))}
-            </span>
-          )}
+          {player.title ? <span className="duel-title-text">{player.title}</span> : null}
+          {player.form.length > 0 && <FormDots form={player.form} />}
         </span>
-      </span>
-      <span className="rank-cell">
-        <span className="rank-line">
-          {player.rankIcon && <img src={player.rankIcon} alt="" loading="lazy" />}
-          <strong style={{ color: player.rankColor }}>{player.rank}</strong>
-        </span>
-        <span className="rank-sub">
-          {player.rr > 0 ? `${player.rr} RR` : "unrated"}
-          {player.leaderboard > 0 && <span>#{player.leaderboard.toLocaleString()}</span>}
-          {player.previousRank && <span>prev {player.previousRank}</span>}
-          {player.peakRankTier > player.rankTier && (
-            <span className="peak">
-              peak {player.peakRank}
-              {player.peakAct ? ` · ${player.peakAct}` : ""}
-            </span>
-          )}
-        </span>
-      </span>
-      <span className="metric-cell tnum kd">
-        <strong>{num(player.kd)}</strong>
-        <span>K/D</span>
-        <i style={{ width: `${acc ?? 0}%` }} />
-      </span>
-      <span className="metric-cell tnum hs">
-        <strong>{pct(player.hsPct)}</strong>
-        <span>HS</span>
-      </span>
-      <span className="metric-cell tnum wr">
-        <strong>{pct(player.winRate)}</strong>
-        <span>{player.games ? `${player.games} games` : "win rate"}</span>
-      </span>
-      <span className="skin-cell">
-        {player.skin?.icon && (
-          <img src={player.skin.icon} alt={player.skin.name} loading="lazy" title={player.skin.name} />
+        {player.smurf && (
+          <span className="duel-flag-line">
+            <AlertTriangle size={10} />
+            {player.smurfReasons.slice(0, 2).join(" · ") || "performance signals detected"}
+          </span>
+        )}
+        {(player.mapWinRate || player.previousRank) && (
+          <span className="duel-meta-line subtle">
+            {player.mapWinRate && (
+              <span>
+                map {player.mapWinRate.winRate}% · {player.mapWinRate.games}g
+              </span>
+            )}
+            {player.previousRank && <span>prev {player.previousRank}</span>}
+          </span>
         )}
       </span>
+
+      <span className="duel-stats">
+        <span>
+          <strong>{num(player.kd)}</strong>
+          <em>K/D</em>
+        </span>
+        <span>
+          <strong>{pct(player.hsPct)}</strong>
+          <em>HS</em>
+        </span>
+        <span title={player.games ? `${player.games} games this act` : "win rate"}>
+          <strong>{pct(player.winRate)}</strong>
+          <em>WIN</em>
+        </span>
+      </span>
+
+      {showAgent && (
+        <span className="duel-agent">
+          {player.agentArt ? (
+            <img className="duel-agent-art" src={player.agentArt} alt="" loading="lazy" />
+          ) : null}
+          <span className="duel-agent-copy">
+            {player.agentPortrait ? (
+              <img className="duel-agent-face" src={player.agentPortrait} alt="" loading="lazy" />
+            ) : null}
+            <strong>{player.agent ?? "No pick"}</strong>
+            <em>{player.role ?? "—"}</em>
+          </span>
+        </span>
+      )}
+
+      {player.statsPending && (
+        <span className="duel-row-pending" title="Refreshing recent form from Riot">
+          <Loader2 size={11} className="spin" />
+        </span>
+      )}
     </button>
+  );
+}
+
+function TeamPanel({
+  board,
+  team,
+  isSelf,
+  index,
+  onPlayer,
+}: {
+  board: NonNullable<Awaited<ReturnType<typeof api.liveBoard>>>;
+  team: string;
+  isSelf: boolean;
+  index: number;
+  onPlayer?: (player: Player) => void;
+}) {
+  const players = board.teams?.[team] ?? [];
+  const stats: TeamStats | undefined = board.teamStats?.[team];
+  const isLobby = board.state === "MENUS";
+  const showAgents = !isLobby;
+  const side = isLobby ? null : isSelf ? board.side : oppositeSide(board.side);
+  const parties = (board.parties ?? []).filter(
+    (party) =>
+      party.size > 1 &&
+      players.some((player) => player.party?.id === party.id),
+  );
+
+  return (
+    <article
+      className={cn("duel-team", isSelf ? "ally" : "enemy")}
+      style={{ "--team-index": index } as CSSProperties}
+    >
+      <header className="duel-head">
+        <div className="duel-head-top">
+          <span className={cn("duel-tag", isSelf ? "ally" : "enemy")}>
+            {isSelf ? "YOUR TEAM" : "ENEMY TEAM"}
+          </span>
+          <strong>{isLobby ? "Lobby" : team}</strong>
+          {side && <span className="duel-side">{side}</span>}
+          <span className="duel-size">
+            <Users size={11} /> {players.length}
+          </span>
+          <span className="duel-parties">
+            {parties.map((party) => (
+              <span className="duel-party" key={party.id}>
+                <i style={{ background: party.color }} />
+                {party.size}-stack
+              </span>
+            ))}
+          </span>
+        </div>
+        <div className="duel-kpis">
+          <Kpi
+            label="avg rank"
+            value={stats?.avgRank ?? "-"}
+            color={stats?.rankColor}
+            icon={stats?.rankIcon}
+          />
+          <Kpi label="avg K/D" value={num(stats?.avgKd)} />
+          <Kpi label="win rate" value={pct(stats?.avgWinRate)} />
+          <Kpi label="smurfs" value={String(stats?.smurfCount ?? 0)} smurfs />
+        </div>
+      </header>
+
+      {showAgents && (
+        <div className="duel-agents">
+          <span className="duel-agents-label">
+            <Swords size={11} /> picks
+          </span>
+          {players.map((player) => (
+            <button
+              key={player.puuid}
+              className="duel-agent-chip"
+              onClick={() => onPlayer?.(player)}
+              title={`${player.name}${player.agent ? ` · ${player.agent}` : ""}`}
+            >
+              {player.agentPortrait ? (
+                <img src={player.agentPortrait} alt={player.agent ?? "Agent"} loading="lazy" />
+              ) : (
+                <span className="duel-agent-empty">?</span>
+              )}
+              <span>
+                <strong>{player.agent ?? "No pick"}</strong>
+                <em>{player.name.split("#")[0]}</em>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="duel-list">
+        {players.map((player, playerIndex) => (
+          <PlayerCard
+            key={player.puuid}
+            player={player}
+            index={playerIndex}
+            showAgent={showAgents}
+            onSelect={onPlayer}
+          />
+        ))}
+        {players.some((player) => player.statsPending) && (
+          <div className="duel-pending">
+            <Loader2 size={12} className="spin" />
+            syncing recent form from Riot
+          </div>
+        )}
+      </div>
+    </article>
   );
 }
 
@@ -169,17 +315,8 @@ export function Scoreboard({
     (team) => (board.teams?.[team]?.length ?? 0) > 0,
   );
   const isLobby = board.state === "MENUS";
+  const rounds = board.score?.rounds ?? [];
   const [copied, setCopied] = useState(false);
-  const partyRows = (board.parties ?? [])
-    .filter((party) => party.size > 1)
-    .map((party) => {
-      const members = board.players.filter((player) => player.party?.id === party.id);
-      const team = members[0]?.team;
-      return {
-        ...party,
-        team: team === selfTeam ? "your team" : "enemy team",
-      };
-    });
 
   async function shareBoard() {
     const lines = [
@@ -188,7 +325,10 @@ export function Scoreboard({
         const players = board.teams?.[team] ?? [];
         const label = team === selfTeam ? "Your team" : "Enemy team";
         return `${label}: ${players
-          .map((player) => `${player.name} (${player.rank}${player.rr > 0 ? ` ${player.rr} RR` : ""})`)
+          .map(
+            (player) =>
+              `${player.agent ?? "?"} ${player.name} (${player.rank}${player.rr > 0 ? ` ${player.rr} RR` : ""})`,
+          )
           .join(", ")}`;
       }),
     ];
@@ -199,53 +339,65 @@ export function Scoreboard({
   }
 
   return (
-    <section className="board">
-      <header className="board-head">
-        {board.mapSplash && (
-          <div
-            className="board-splash"
-            style={{ backgroundImage: `url(${board.mapSplash})` }}
-          />
-        )}
-        <div className="board-head-inner">
+    <section className="duel-board">
+      <header
+        className={cn("duel-match", isLobby && "lobby")}
+        style={board.mapSplash ? { backgroundImage: `url(${board.mapSplash})` } : undefined}
+      >
+        <span className="duel-match-shade" />
+        <div className="duel-match-top">
           <div>
-            <div className="board-kicker">
+            <div className="duel-kicker">
               <span className="live-dot" />
               {board.stateLabel}
-              <span className="slash">/</span>
+              <span className="duel-slash">/</span>
               {board.mode}
-              {board.source === "demo" && <span className="demo-badge">demo data</span>}
+              {board.source === "demo" && <span className="duel-demo">demo data</span>}
               {board.matchId && !isLobby && (
-                <span className="match-id">{board.matchId.slice(0, 8)}</span>
+                <span className="duel-match-id">{board.matchId.slice(0, 8)}</span>
               )}
             </div>
             <h1>{isLobby ? "Your lobby" : board.map || "Match"}</h1>
-            {board.score && (
-              <div className="match-score">
-                <span>{board.score.ally}</span>
-                <em>:</em>
-                <span>{board.score.enemy}</span>
-                {board.score.round !== null && board.score.round !== undefined && (
-                  <small>round {board.score.round}</small>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="board-actions">
-            {board.lockProgress && (
-              <div className="lock-progress">
-                <span>
+            <div className="duel-match-sub">
+              {board.side && <span className="duel-side pill">{board.side}</span>}
+              {board.lockProgress && (
+                <span className="duel-lock">
                   {board.lockProgress.locked}/{board.lockProgress.total} locked
+                  <i>
+                    <b
+                      style={{
+                        width: `${(board.lockProgress.locked / board.lockProgress.total) * 100}%`,
+                      }}
+                    />
+                  </i>
                 </span>
-                <div className="bar">
-                  <i
-                    style={{
-                      width: `${(board.lockProgress.locked / board.lockProgress.total) * 100}%`,
-                    }}
-                  />
-                </div>
+              )}
+              {board.score?.round !== null && board.score?.round !== undefined && (
+                <span className="duel-round-label">round {board.score.round}</span>
+              )}
+              {isLobby && (
+                <span className="duel-lobby-note">
+                  {board.players?.length ?? 0} in lobby · queue up to load both teams
+                </span>
+              )}
+            </div>
+          </div>
+
+          {board.score && (
+            <div className="duel-scoreboard">
+              <div className="duel-score-side">
+                <span>YOU</span>
+                <strong>{board.score.ally}</strong>
               </div>
-            )}
+              <em>:</em>
+              <div className="duel-score-side them">
+                <span>THEM</span>
+                <strong>{board.score.enemy}</strong>
+              </div>
+            </div>
+          )}
+
+          <div className="duel-actions">
             <button className="icon-button" onClick={onRefresh} title="Refresh scoreboard">
               <RefreshCw size={16} className={refreshing ? "spin" : ""} />
             </button>
@@ -254,27 +406,26 @@ export function Scoreboard({
             </button>
           </div>
         </div>
+
+        {rounds.length > 0 && (
+          <div className="duel-rounds" aria-label="Round history">
+            <span>ROUNDS</span>
+            {rounds.map((round, index) => (
+              <i key={index} className={round === "W" ? "w" : "l"} title={round === "W" ? "Win" : "Loss"} />
+            ))}
+          </div>
+        )}
+
         {board.winProb !== null && (
-          <div className="win-prob">
-            <span className="wp-label">
+          <div className="duel-winbar">
+            <span>
               <strong>{board.winProb}%</strong> win probability
             </span>
-            <div className="wp-bar">
+            <div>
               <i style={{ width: `${board.winProb}%` }} />
               <b style={{ left: `${board.winProb}%` }} />
             </div>
-            <span className="wp-note">rank + recent form</span>
-          </div>
-        )}
-        {partyRows.length > 0 && (
-          <div className="party-legend">
-            <span className="panel-label">Parties</span>
-            {partyRows.map((party) => (
-              <span className="party-chip" key={party.id}>
-                <i style={{ background: party.color }} />
-                {party.size}-stack · {party.team}
-              </span>
-            ))}
+            <em>rank + recent form</em>
           </div>
         )}
       </header>
@@ -286,57 +437,50 @@ export function Scoreboard({
         </div>
       )}
 
-      {ordered.map((team) => {
-        const players = board.teams?.[team] ?? [];
-        return (
-          <div className="team-block" key={team}>
-            <TeamHeader
-              name={isLobby ? "Lobby" : team}
-              stats={board.teamStats?.[team]}
-              side={isLobby ? null : team === selfTeam ? board.side : oppositeSide(board.side)}
-              score={board.score ? (team === selfTeam ? board.score.ally : board.score.enemy) : null}
+      {ordered.length > 0 ? (
+        <div className={cn("duel-teams", ordered.length === 1 && "single")}>
+          {ordered.map((team, index) => (
+            <TeamPanel
+              key={team}
+              board={board}
+              team={team}
               isSelf={team === selfTeam}
+              index={index}
+              onPlayer={onPlayer}
             />
-            <div className="player-list">
-              <div className="player-columns">
-                <span />
-                <span>#</span>
-                <span>Agent</span>
-                <span>Player</span>
-                <span>Rank</span>
-                <span>K/D</span>
-                <span>HS</span>
-                <span>WR</span>
-                <span>Skin</span>
-              </div>
-              {players.map((player, index) => (
-                <Row
-                  player={player}
-                  rank={index + 1}
-                  key={player.puuid}
-                  onSelect={onPlayer}
-                />
-              ))}
-              {players.some((player) => player.statsPending) && (
-                <div className="stats-pending">
-                  <Loader2 size={13} className="spin" />
-                  loading recent form from Riot
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
-
-      {!ordered.length && (
-        <div className="board-empty">
-          <div className="empty-icon">
-            <Check size={20} />
-          </div>
+          ))}
+        </div>
+      ) : (
+        <div className="duel-empty">
+          <span className="duel-empty-icon">
+            <ShieldCheck size={22} />
+          </span>
           <h2>Client connected</h2>
-          <p>The scoreboard fills in once you join a lobby, agent select or a match.</p>
+          <p>The board fills in once you join a lobby, agent select or a match.</p>
         </div>
       )}
+    </section>
+  );
+}
+
+export function ScoreboardSkeleton() {
+  return (
+    <section className="duel-board duel-skeleton">
+      <div className="duel-skeleton-head">
+        <span />
+        <span />
+        <span />
+      </div>
+      <div className="duel-teams">
+        {[0, 1].map((column) => (
+          <div className="duel-skeleton-team" key={column}>
+            <div className="duel-skeleton-row tall" />
+            {[0, 1, 2, 3, 4].map((row) => (
+              <div className="duel-skeleton-row" key={row} />
+            ))}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

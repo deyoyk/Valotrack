@@ -14,7 +14,7 @@ import { api, Agent, CareerMatch, Health, LiveBoard, Player } from "../lib/api";
 import { buildDemoBoard } from "../lib/demo";
 import { cn } from "../lib/format";
 import { usePoll } from "../lib/usePoll";
-import { Scoreboard } from "../components/Scoreboard";
+import { Scoreboard, ScoreboardSkeleton } from "../components/Scoreboard";
 import { LobbyInsights } from "../components/LobbyInsights";
 import { ProfileModal } from "../components/ProfileModal";
 import { MatchDetailModal } from "../components/MatchDetailModal";
@@ -61,7 +61,7 @@ export default function Live() {
     api.agents().then((catalog) => setAgents(catalog.agents)).catch(() => void 0);
   }, []);
 
-  usePoll(() => refresh(true), (health?.clientAvailable ? 4 : 6) * 1000);
+  usePoll(() => refresh(true), (health?.clientAvailable ? 2 : 5) * 1000);
 
   const connected = health?.clientAvailable ?? false;
   const demoBoard = demo ? buildDemoBoard(agents) : null;
@@ -285,12 +285,7 @@ export default function Live() {
         />
       )}
 
-      {!shownBoard && !loading && connected && !gameClosed && (
-        <div className="center-state">
-          <Loader2 size={20} className="spin" />
-          <span>Waiting for the client session</span>
-        </div>
-      )}
+      {!shownBoard && !loading && connected && !gameClosed && <ScoreboardSkeleton />}
     </div>
   );
 }

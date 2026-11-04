@@ -143,7 +143,7 @@ pub struct Rank {
 }
 
 const RANK_GROUPS: &[(&str, &[&str], &str)] = &[
-    ("Unranked", &["Unranked"], "#4A4A4A"),
+    ("Unranked", &["Unranked", "Unranked", "Unranked"], "#4A4A4A"),
     ("Iron", &["Iron 1", "Iron 2", "Iron 3"], "#5A5751"),
     ("Bronze", &["Bronze 1", "Bronze 2", "Bronze 3"], "#BB8F5A"),
     ("Silver", &["Silver 1", "Silver 2", "Silver 3"], "#AEB2B2"),
@@ -156,7 +156,7 @@ const RANK_GROUPS: &[(&str, &[&str], &str)] = &[
 ];
 
 pub fn rank_from_tier(tier: i32) -> Rank {
-    let clamped = tier.clamp(0, 25);
+    let clamped = tier.clamp(0, 27);
     let mut index = 0usize;
     for (group, names, color) in RANK_GROUPS {
         for name in *names {
@@ -182,7 +182,7 @@ pub fn rank_from_tier(tier: i32) -> Rank {
 pub fn rank_icon(tier: i32) -> String {
     format!(
         "https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/{}/smallicon.png",
-        tier.clamp(0, 25)
+        tier.clamp(0, 27)
     )
 }
 
@@ -237,9 +237,15 @@ mod tests {
     #[test]
     fn ranks_cover_every_tier() {
         assert_eq!(rank_from_tier(0).name, "Unranked");
-        assert_eq!(rank_from_tier(1).name, "Iron 1");
-        assert_eq!(rank_from_tier(16).name, "Diamond 1");
-        assert_eq!(rank_from_tier(25).name, "Radiant");
+        assert_eq!(rank_from_tier(1).name, "Unranked");
+        assert_eq!(rank_from_tier(3).name, "Iron 1");
+        assert_eq!(rank_from_tier(4).name, "Iron 2");
+        assert_eq!(rank_from_tier(6).name, "Bronze 1");
+        assert_eq!(rank_from_tier(8).name, "Bronze 3");
+        assert_eq!(rank_from_tier(10).name, "Silver 2");
+        assert_eq!(rank_from_tier(12).name, "Gold 1");
+        assert_eq!(rank_from_tier(18).name, "Diamond 1");
+        assert_eq!(rank_from_tier(27).name, "Radiant");
         assert_eq!(rank_from_tier(99).name, "Radiant");
     }
 

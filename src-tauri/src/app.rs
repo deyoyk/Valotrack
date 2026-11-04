@@ -54,6 +54,52 @@ impl Settings {
     }
 }
 
+fn relabel_rank_scale(data_dir: &PathBuf) {
+    let mut history = store::read(data_dir, "history");
+    if history.get("rankScale").and_then(serde_json::Value::as_u64) != Some(28) {
+        history["rankScale"] = serde_json::json!(28);
+        let _ = store::write(data_dir, "history", &history);
+    }
+
+    let mut encounters = store::read(data_dir, "encounters");
+    if encounters.get("rankScale").and_then(serde_json::Value::as_u64) != Some(28) {
+        if let Some(accounts) = encounters
+            .get_mut("accounts")
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            for account in accounts.values_mut() {
+                let Some(players) = account
+                    .get_mut("players")
+                    .and_then(serde_json::Value::as_object_mut)
+                else {
+                    continue;
+                };
+                for player in players.values_mut() {
+                    let tier = player
+                        .get("rankTier")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or(0);
+                    if tier > 0 {
+                        let rank = crate::catalog::rank_from_tier(tier as i32);
+                        player["rank"] = serde_json::json!(rank.name);
+                        player["rankColor"] = serde_json::json!(rank.color);
+                    }
+                    let peak = player
+                        .get("peakTier")
+                        .and_then(serde_json::Value::as_i64)
+                        .unwrap_or(0);
+                    if peak > 0 {
+                        let rank = crate::catalog::rank_from_tier(peak as i32);
+                        player["peakRank"] = serde_json::json!(rank.name);
+                    }
+                }
+            }
+        }
+        encounters["rankScale"] = serde_json::json!(28);
+        let _ = store::write(data_dir, "encounters", &encounters);
+    }
+}
+
 #[derive(Clone)]
 pub struct CachedLive {
     pub at: Instant,
@@ -80,6 +126,7 @@ pub struct AppState {
 impl AppState {
     pub fn new_headless(data_dir: PathBuf) -> Result<Self, String> {
         std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+        relabel_rank_scale(&data_dir);
         let settings = Settings::load(&data_dir);
         let http = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
@@ -114,6 +161,7 @@ impl AppState {
             .app_data_dir()
             .map_err(|e| format!("could not resolve app data directory: {e}"))?;
         std::fs::create_dir_all(&data_dir).map_err(|e| e.to_string())?;
+        relabel_rank_scale(&data_dir);
         let settings = Settings::load(&data_dir);
         let http = reqwest::Client::builder()
             .danger_accept_invalid_certs(true)

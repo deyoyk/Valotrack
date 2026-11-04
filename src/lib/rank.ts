@@ -1,5 +1,7 @@
 const RANKS = [
   "Unranked",
+  "Unranked",
+  "Unranked",
   "Iron 1",
   "Iron 2",
   "Iron 3",
@@ -29,6 +31,8 @@ const RANKS = [
 
 const COLORS = [
   "#4A4A4A",
+  "#4A4A4A",
+  "#4A4A4A",
   "#5A5751",
   "#5A5751",
   "#5A5751",
@@ -57,16 +61,16 @@ const COLORS = [
 ];
 
 export function rankName(tier: number): string {
-  return RANKS[Math.max(0, Math.min(25, tier))] ?? "Unranked";
+  return RANKS[Math.max(0, Math.min(27, tier))] ?? "Unranked";
 }
 
 export function rankColor(tier: number): string {
-  return COLORS[Math.max(0, Math.min(25, tier))] ?? "#4A4A4A";
+  return COLORS[Math.max(0, Math.min(27, tier))] ?? "#4A4A4A";
 }
 
 export function rankIcon(tier: number): string {
   return `https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/${Math.max(
     0,
-    Math.min(25, tier),
+    Math.min(27, tier),
   )}/smallicon.png`;
 }

@@ -154,12 +154,12 @@ impl Valo {
     pub async fn rank_icon(&self, tier: i32) -> Option<String> {
         self.rank_icons()
             .await
-            .get(&tier.clamp(0, 25))
+            .get(&tier.clamp(0, 27))
             .and_then(|(small, _)| small.clone())
             .or_else(|| {
                 Some(format!(
                     "https://media.valorant-api.com/competitivetiers/03621f52-342b-cf4e-4f86-9350a49c6d04/{}/smallicon.png",
-                    tier.clamp(0, 25)
+                    tier.clamp(0, 27)
                 ))
             })
     }

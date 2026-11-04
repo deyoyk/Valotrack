@@ -12,15 +12,15 @@ import {
 
 const RANKS = [
   { tier: 27, name: "Radiant", group: "Radiant", color: "#fff1b8" },
-  { tier: 24, name: "Immortal 3", group: "Immortal", color: "#ff4655" },
-  { tier: 22, name: "Immortal 1", group: "Immortal", color: "#ff4655" },
-  { tier: 21, name: "Ascendant 3", group: "Ascendant", color: "#2fbf71" },
-  { tier: 19, name: "Ascendant 1", group: "Ascendant", color: "#2fbf71" },
-  { tier: 18, name: "Diamond 3", group: "Diamond", color: "#d977ff" },
-  { tier: 15, name: "Platinum 2", group: "Platinum", color: "#4fb6c9" },
+  { tier: 26, name: "Immortal 3", group: "Immortal", color: "#ff4655" },
+  { tier: 24, name: "Immortal 1", group: "Immortal", color: "#ff4655" },
+  { tier: 23, name: "Ascendant 3", group: "Ascendant", color: "#2fbf71" },
+  { tier: 21, name: "Ascendant 1", group: "Ascendant", color: "#2fbf71" },
+  { tier: 20, name: "Diamond 3", group: "Diamond", color: "#d977ff" },
+  { tier: 16, name: "Platinum 2", group: "Platinum", color: "#4fb6c9" },
   { tier: 12, name: "Gold 1", group: "Gold", color: "#e8c15a" },
-  { tier: 9, name: "Silver 3", group: "Silver", color: "#c2c6cc" },
-  { tier: 6, name: "Bronze 2", group: "Bronze", color: "#b07a5c" },
+  { tier: 11, name: "Silver 3", group: "Silver", color: "#c2c6cc" },
+  { tier: 7, name: "Bronze 2", group: "Bronze", color: "#b07a5c" },
 ];
 
 const NAMES = [

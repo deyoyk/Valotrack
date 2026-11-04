@@ -176,11 +176,11 @@ pub async fn dodge(state: &Arc<AppState>, dry_run: bool) -> Value {
         });
     };
     let path = format!("/pregame/v1/matches/{match_id}/quit");
-    let first = quit_pregame(&session, &path, Some(&json!({}))).await;
+    let first = quit_pregame(&session, &path, None).await;
     let attempt = match first {
         Ok((status, detail)) if (200..=299).contains(&status) => Ok((status, detail)),
         Ok((status, detail)) if (400..=422).contains(&status) => {
-            match quit_pregame(&session, &path, None).await {
+            match quit_pregame(&session, &path, Some(&json!({}))).await {
                 Ok(retry) => Ok(retry),
                 Err(_) => Ok((status, detail)),
             }
@@ -236,7 +236,7 @@ pub async fn check_side(state: &Arc<AppState>) -> Value {
     };
     match session.current_match("PREGAME").await {
         Ok(Some(current)) => {
-            let team = current
+            let Some(team) = current
                 .players
                 .iter()
                 .find(|player| {
@@ -244,10 +244,19 @@ pub async fn check_side(state: &Arc<AppState>) -> Value {
                 })
                 .and_then(|player| player.get("TeamID"))
                 .and_then(Value::as_str)
-                .unwrap_or("Blue");
+            else {
+                return json!({
+                    "ok": false,
+                    "side": Value::Null,
+                    "phase": "PREGAME",
+                    "map": catalog::map_name_from_id(&current.map_id),
+                    "message": "Agent select is active, but your team wasn't in the match payload yet. Try again in a moment."
+                });
+            };
             json!({
                 "ok": true,
                 "side": if team == "Red" { "Attacker" } else { "Defender" },
+                "phase": "PREGAME",
                 "map": catalog::map_name_from_id(&current.map_id),
                 "message": if team == "Red" {
                     "You start on attack."
@@ -256,7 +265,7 @@ pub async fn check_side(state: &Arc<AppState>) -> Value {
                 }
             })
         }
-        Ok(None) => json!({ "ok": false, "message": "No agent-select match found." }),
+        Ok(None) => json!({ "ok": false, "phase": "MENUS", "message": "No agent-select match found." }),
         Err(error) => json!({ "ok": false, "message": error.to_string() }),
     }
 }
@@ -278,7 +287,20 @@ pub async fn live_instalock(
     let Some(agent) = catalog::resolve_agent(agent) else {
         return json!({ "ok": false, "message": "Unknown agent." });
     };
+    let mode = mode.trim().to_lowercase();
+    if mode != "lock" && mode != "hover" {
+        return json!({ "ok": false, "message": "Mode must be 'lock' or 'hover'." });
+    }
     let settings = state.settings_snapshot();
+    if dry_run || !settings.allow_live_actions {
+        return json!({
+            "ok": true,
+            "status": "dry-run",
+            "agent": agent.name,
+            "mode": mode,
+            "message": format!("DRY-RUN: would {mode} {} when agent select opens.", agent.name)
+        });
+    }
     let session = match state.riot.session(&settings.region).await {
         Ok(session) => session,
         Err(error) => return json!({ "ok": false, "message": error.to_string() }),
@@ -296,14 +318,6 @@ pub async fn live_instalock(
         return json!({
             "ok": false,
             "message": format!("You don't own {} on this account.", agent.name)
-        });
-    }
-    if dry_run || !settings.allow_live_actions {
-        return json!({
-            "ok": true,
-            "status": "dry-run",
-            "agent": agent.name,
-            "message": format!("DRY-RUN: would {mode} {} when agent select opens.", agent.name)
         });
     }
     let Some(match_id) = pregame_match_id(&session).await else {

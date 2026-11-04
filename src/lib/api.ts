@@ -830,7 +830,15 @@ export const api = {
     mode: string,
     delay: number,
     perMap: Record<string, string>,
-  ) => invoke<ActionResponse & { running?: boolean }>("instalock_start", { agent, mode, delay, perMap }),
+    dryRun: boolean,
+  ) =>
+    invoke<ActionResponse & { running?: boolean }>("instalock_start", {
+      agent,
+      mode,
+      delay,
+      perMap,
+      dryRun,
+    }),
   instalockStop: () => invoke<{ ok: boolean; running: boolean }>("instalock_stop"),
   instalockStatus: () => invoke<InstalockStatus>("instalock_status"),
   profile: (puuid: string) => invoke<CareerProfile>("profile", { puuid }),

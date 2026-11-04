@@ -185,6 +185,7 @@ export default function Matchmaking() {
         mode,
         delay,
         perMapEnabled ? perMap : {},
+        dryRun,
       );
       setResult({ ...response, message: response.message });
       await loadStatus();
@@ -611,13 +612,15 @@ export default function Matchmaking() {
               <span>Delay</span>
               <input
                 type="number"
-                min={0}
+                min={4}
                 max={30}
                 step={1}
                 value={delay}
-                onChange={(event) => setDelay(Number(event.target.value))}
+                onChange={(event) =>
+                  setDelay(Math.max(4, Math.min(30, Number(event.target.value) || 4)))
+                }
               />
-              <em>sec</em>
+              <em>sec · min 4 + jitter</em>
             </label>
             <label className="check-line">
               <input

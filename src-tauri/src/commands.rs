@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use serde::Serialize;
 use tauri::State;
@@ -131,10 +131,42 @@ pub async fn instalock_start(
     mode: String,
     delay: f64,
     per_map: Option<serde_json::Value>,
+    dry_run: bool,
 ) -> Result<serde_json::Value, String> {
     let settings = state.settings_snapshot();
     let resolved = crate::catalog::resolve_agent(&agent)
         .ok_or_else(|| format!("Unknown agent '{agent}'"))?;
+    let mode = mode.trim().to_lowercase();
+    if mode != "lock" && mode != "hover" {
+        return Err("Mode must be 'lock' or 'hover'.".to_string());
+    }
+    let mut overrides = HashMap::new();
+    if let Some(serde_json::Value::Object(entries)) = per_map {
+        for (map, value) in entries {
+            let map = map.trim().to_lowercase();
+            let Some(name) = value.as_str().map(str::trim).filter(|name| !name.is_empty()) else {
+                continue;
+            };
+            let Some(override_agent) = crate::catalog::resolve_agent(name) else {
+                return Err(format!("Unknown agent '{name}' for map '{map}'."));
+            };
+            overrides.insert(map, override_agent.name.to_string());
+        }
+    }
+    if dry_run || !settings.allow_live_actions {
+        return Ok(serde_json::json!({
+            "ok": true,
+            "running": false,
+            "status": "dry-run",
+            "agent": resolved.name,
+            "mode": mode,
+            "perMap": overrides,
+            "message": format!(
+                "DRY-RUN: would {mode} {} when agent select starts. Turn dry run off to arm it.",
+                resolved.name
+            )
+        }));
+    }
     let session = state
         .riot
         .session(&settings.region)
@@ -149,51 +181,24 @@ pub async fn instalock_start(
             resolved.name
         ));
     }
-    let mut per_map = per_map.unwrap_or_else(|| serde_json::json!({}));
-    let mut ignored = Vec::new();
-    if let Some(entries) = per_map.as_object_mut() {
-        entries.retain(|_, value| {
-            let Some(name) = value.as_str() else {
-                return false;
-            };
-            if name.is_empty() {
-                return false;
-            }
-            let Some(agent) = crate::catalog::resolve_agent(name) else {
-                ignored.push(name.to_string());
-                return false;
-            };
-            if !crate::catalog::is_agent_owned(&owned, agent.uuid) {
-                ignored.push(agent.name.to_string());
-                return false;
-            }
-            true
-        });
-    }
-    if settings.allow_live_actions {
-        let mut result = state.instalock.start(
-            state.inner().clone(),
-            resolved.name.to_string(),
-            mode,
-            delay,
-            per_map,
-        )?;
-        if !ignored.is_empty() {
-            result["ignoredPerMap"] = serde_json::json!(ignored);
+    for (map, name) in &overrides {
+        let Some(override_agent) = crate::catalog::resolve_agent(name) else {
+            return Err(format!("Unknown agent '{name}' for map '{map}'."));
+        };
+        if !crate::catalog::is_agent_owned(&owned, override_agent.uuid) {
+            return Err(format!(
+                "You don't own {} for map '{map}'.",
+                override_agent.name
+            ));
         }
-        Ok(result)
-    } else {
-        Ok(serde_json::json!({
-            "ok": true,
-            "running": false,
-            "status": "dry-run",
-            "agent": resolved.name,
-            "message": format!(
-                "DRY-RUN: would {mode} {} when agent select starts. Enable live actions in Settings to arm it.",
-                resolved.name
-            )
-        }))
     }
+    state.instalock.start(
+        state.inner().clone(),
+        resolved.name.to_string(),
+        mode,
+        delay,
+        overrides,
+    )
 }
 
 #[tauri::command]

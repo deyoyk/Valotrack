@@ -1,11 +1,55 @@
-use std::{collections::HashMap, sync::Arc, time::{SystemTime, UNIX_EPOCH}};
+use std::{collections::{HashMap, HashSet}, sync::Arc, time::{SystemTime, UNIX_EPOCH}};
 
 use chrono::{Datelike, Local, TimeZone, Timelike};
+use futures::{stream, StreamExt};
 use serde_json::{json, Value};
 
 use crate::{app::{store, AppState}, catalog, riot::Session};
 
 const MAX_POINTS: usize = 2000;
+
+fn result_from_detail(detail: &Value, puuid: &str) -> Option<&'static str> {
+    let players = detail.get("players")?.as_array()?;
+    let me = players
+        .iter()
+        .find(|player| player.get("subject").and_then(Value::as_str) == Some(puuid))?;
+    let team_id = me.get("teamId")?.as_str()?;
+    let teams = detail.get("teams")?.as_array()?;
+    let mut mine_won = false;
+    let mut enemy_won = false;
+    for team in teams {
+        if team.get("won").and_then(Value::as_bool) == Some(true) {
+            if team.get("teamId").and_then(Value::as_str) == Some(team_id) {
+                mine_won = true;
+            } else {
+                enemy_won = true;
+            }
+        }
+    }
+    if mine_won {
+        return Some("Victory");
+    }
+    if enemy_won {
+        return Some("Defeat");
+    }
+    let mine_rounds = teams
+        .iter()
+        .find(|team| team.get("teamId").and_then(Value::as_str) == Some(team_id))
+        .and_then(|team| team.get("roundsWon"))
+        .and_then(Value::as_i64)?;
+    let enemy_rounds = teams
+        .iter()
+        .filter(|team| team.get("teamId").and_then(Value::as_str) != Some(team_id))
+        .filter_map(|team| team.get("roundsWon").and_then(Value::as_i64))
+        .max()?;
+    Some(if mine_rounds > enemy_rounds {
+        "Victory"
+    } else if mine_rounds < enemy_rounds {
+        "Defeat"
+    } else {
+        "Draw"
+    })
+}
 
 pub async fn refresh(state: &Arc<AppState>, session: &Session) -> Result<(), String> {
     let puuid = session.puuid.clone();
@@ -57,6 +101,38 @@ pub async fn refresh(state: &Arc<AppState>, session: &Session) -> Result<(), Str
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
+    let exact_ids: HashSet<String> = points
+        .iter()
+        .filter(|point| point.get("resultExact").and_then(Value::as_bool) == Some(true))
+        .filter_map(|point| point.get("matchId").and_then(Value::as_str))
+        .map(str::to_string)
+        .collect();
+    let unresolved: Vec<String> = updates
+        .iter()
+        .filter(|row| row.get("RankedRatingEarned").and_then(Value::as_i64).unwrap_or(0) == 0)
+        .filter_map(|row| row.get("MatchID").and_then(Value::as_str))
+        .filter(|match_id| !exact_ids.contains(*match_id))
+        .map(str::to_string)
+        .collect();
+    let fetched: Vec<(String, Option<&'static str>)> = stream::iter(unresolved)
+        .map(|match_id| {
+            let session = session.clone();
+            let puuid = session.puuid.clone();
+            async move {
+                let result = match session.match_detail(&match_id).await {
+                    Ok(detail) => result_from_detail(&detail, &puuid),
+                    Err(_) => None,
+                };
+                (match_id, result)
+            }
+        })
+        .buffer_unordered(4)
+        .collect()
+        .await;
+    let resolved: HashMap<String, &'static str> = fetched
+        .into_iter()
+        .filter_map(|(match_id, result)| result.map(|result| (match_id, result)))
+        .collect();
     for row in updates {
         let Some(match_id) = row.get("MatchID").and_then(Value::as_str) else {
             continue;
@@ -66,19 +142,26 @@ pub async fn refresh(state: &Arc<AppState>, session: &Session) -> Result<(), Str
             continue;
         }
         let delta = row.get("RankedRatingEarned").and_then(Value::as_i64).unwrap_or(0);
-        let result = if delta > 0 {
+        let mut exact = delta != 0;
+        let mut result = if delta > 0 {
             "Victory"
         } else if delta < 0 {
             "Defeat"
         } else {
             "Draw"
         };
+        if !exact {
+            if let Some(resolved_result) = resolved.get(match_id) {
+                result = *resolved_result;
+                exact = true;
+            }
+        }
         let point = json!({
             "matchId": match_id,
             "ts": ts,
             "map": catalog::map_name_from_id(row.get("MapID").and_then(Value::as_str).unwrap_or("")),
             "result": result,
-            "resultExact": false,
+            "resultExact": exact,
             "delta": delta,
             "tier": row.get("TierAfterUpdate").and_then(Value::as_i64).unwrap_or(0),
             "rr": row.get("RankedRatingAfterUpdate").and_then(Value::as_i64).unwrap_or(0),
@@ -187,6 +270,7 @@ fn summary(points: &[Value]) -> Value {
             "games": 0,
             "wins": 0,
             "losses": 0,
+            "draws": 0,
             "winRate": 0,
             "avgDelta": 0,
             "netRr": 0,
@@ -205,6 +289,11 @@ fn summary(points: &[Value]) -> Value {
         .iter()
         .filter(|point| point.get("result").and_then(Value::as_str) == Some("Defeat"))
         .count();
+    let draws = points
+        .iter()
+        .filter(|point| point.get("result").and_then(Value::as_str) == Some("Draw"))
+        .count();
+    let rated = wins + losses;
     let deltas: Vec<i64> = points
         .iter()
         .filter_map(|point| point.get("delta").and_then(Value::as_i64))
@@ -243,7 +332,8 @@ fn summary(points: &[Value]) -> Value {
         "games": games,
         "wins": wins,
         "losses": losses,
-        "winRate": (100.0 * wins as f64 / games as f64).round(),
+        "draws": draws,
+        "winRate": if rated > 0 { (100.0 * wins as f64 / rated as f64).round() } else { 0.0 },
         "avgDelta": if deltas.is_empty() { 0.0 } else { (deltas.iter().sum::<i64>() as f64 / deltas.len() as f64 * 10.0).round() / 10.0 },
         "netRr": net,
         "maps": maps,
@@ -425,6 +515,12 @@ fn sessions(points: &[Value]) -> Vec<Value> {
                 .iter()
                 .filter(|point| point.get("result").and_then(Value::as_str) == Some("Victory"))
                 .count();
+            let losses = group
+                .iter()
+                .filter(|point| point.get("result").and_then(Value::as_str) == Some("Defeat"))
+                .count();
+            let draws = group.len() - wins - losses;
+            let rated = wins + losses;
             let start = group
                 .first()
                 .and_then(|point| point.get("ts"))
@@ -445,8 +541,9 @@ fn sessions(points: &[Value]) -> Vec<Value> {
                 "end": end,
                 "games": group.len(),
                 "wins": wins,
-                "losses": group.len() - wins,
-                "winRate": (100.0 * wins as f64 / group.len() as f64).round(),
+                "losses": losses,
+                "draws": draws,
+                "winRate": if rated > 0 { (100.0 * wins as f64 / rated as f64).round() } else { 0.0 },
                 "netRr": delta
             })
         })
@@ -460,4 +557,52 @@ pub fn now() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_secs())
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn detail(red_won: bool, blue_won: bool, red_rounds: i64, blue_rounds: i64) -> Value {
+        json!({
+            "players": [
+                { "subject": "me", "teamId": "Red" },
+                { "subject": "enemy", "teamId": "Blue" }
+            ],
+            "teams": [
+                { "teamId": "Red", "won": red_won, "roundsWon": red_rounds },
+                { "teamId": "Blue", "won": blue_won, "roundsWon": blue_rounds }
+            ]
+        })
+    }
+
+    #[test]
+    fn match_detail_resolves_win_loss_and_draw() {
+        assert_eq!(
+            result_from_detail(&detail(true, false, 13, 11), "me"),
+            Some("Victory")
+        );
+        assert_eq!(
+            result_from_detail(&detail(false, true, 11, 13), "me"),
+            Some("Defeat")
+        );
+        assert_eq!(
+            result_from_detail(&detail(false, false, 12, 12), "me"),
+            Some("Draw")
+        );
+    }
+
+    #[test]
+    fn summary_counts_draws_without_treating_them_as_losses() {
+        let points = vec![
+            json!({ "result": "Victory", "map": "Ascent", "delta": 20 }),
+            json!({ "result": "Defeat", "map": "Ascent", "delta": -10 }),
+            json!({ "result": "Draw", "map": "Ascent", "delta": 0 })
+        ];
+        let summary = summary(&points);
+        assert_eq!(summary["wins"], 1);
+        assert_eq!(summary["losses"], 1);
+        assert_eq!(summary["draws"], 1);
+        assert_eq!(summary["winRate"], 50.0);
+    }
 }

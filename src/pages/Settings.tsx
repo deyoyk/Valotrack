@@ -5,6 +5,7 @@ import {
   Download,
   Info,
   Loader2,
+  Minimize2,
   RefreshCw,
   Save,
   ShieldCheck,
@@ -162,6 +163,17 @@ export default function Settings() {
               </div>
             </div>
           )}
+
+          <div className="info-row">
+            <Minimize2 size={15} />
+            <div>
+              <span>Background</span>
+              <code>
+                Closing the window keeps Valotrack running in the system tray near the
+                clock. Right-click the tray icon to open it again or exit fully.
+              </code>
+            </div>
+          </div>
         </section>
 
         <section className="panel">

@@ -30,11 +30,34 @@ mod social;
 mod store;
 mod valo;
 
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager, WindowEvent,
+};
 
 pub use app::AppState;
+
+static QUITTING: AtomicBool = AtomicBool::new(false);
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+fn hide_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.hide();
+    }
+}
 
 #[cfg(windows)]
 fn apply_taskbar_icon(window: &tauri::WebviewWindow) {
@@ -130,6 +153,9 @@ pub fn run() {
         return;
     }
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -147,7 +173,53 @@ pub fn run() {
                 }
                 #[cfg(windows)]
                 apply_taskbar_icon(&window);
+                let handle = app.handle().clone();
+                window.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        if !QUITTING.load(Ordering::SeqCst) {
+                            api.prevent_close();
+                            hide_main_window(&handle);
+                        }
+                    }
+                });
             }
+            let show_item = MenuItem::with_id(app, "show", "Open Valotrack", true, None::<&str>)?;
+            let hide_item = MenuItem::with_id(app, "hide", "Hide to tray", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Exit Valotrack", true, None::<&str>)?;
+            let tray_menu =
+                Menu::with_items(app, &[&show_item, &hide_item, &separator, &quit_item])?;
+            let mut tray = TrayIconBuilder::with_id("valotrack-tray")
+                .tooltip("Valotrack - local VALORANT companion")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => show_main_window(app),
+                    "hide" => hide_main_window(app),
+                    "quit" => {
+                        QUITTING.store(true, Ordering::SeqCst);
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        show_main_window(tray.app_handle());
+                    }
+                });
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))
+                .ok()
+                .or_else(|| app.default_window_icon().cloned());
+            if let Some(icon) = tray_icon {
+                tray = tray.icon(icon);
+            }
+            let tray = tray.build(app)?;
+            app.manage(tray);
             discord::spawn(state.clone());
             crate::live::prewarm(&state);
             metrics::spawn(state);

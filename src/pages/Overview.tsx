@@ -24,8 +24,12 @@ import {
 import { cn, pct } from "../lib/format";
 import { MatchDetailModal } from "../components/MatchDetailModal";
 
-function formScore(form: string[]) {
-  return form.filter((result) => result === "W").length;
+function formStats(form: string[]) {
+  return {
+    wins: form.filter((result) => result === "Victory").length,
+    losses: form.filter((result) => result === "Defeat").length,
+    draws: form.filter((result) => result === "Draw").length,
+  };
 }
 
 function remaining(seconds: number | null | undefined) {
@@ -73,6 +77,8 @@ export default function Overview() {
 
   const recent = performance?.recent.slice(0, 6) ?? [];
   const form = recent.map((match) => match.result).reverse();
+  const formTally = formStats(form);
+  const draws = performance?.summary.draws ?? 0;
   const currentSession = sessions?.active ?? null;
   const liveLabel =
     board?.map && board.state !== "MENUS"
@@ -133,6 +139,7 @@ export default function Overview() {
               <strong>{pct(performance?.summary.winRate ?? 0)}</strong>
               <em>
                 {performance?.summary.wins ?? 0}W · {performance?.summary.losses ?? 0}L
+                {draws > 0 ? ` · ${draws}D` : ""}
               </em>
             </div>
             <div className="panel overview-kpi">
@@ -182,6 +189,7 @@ export default function Overview() {
                               ? "loss"
                               : "draw",
                         )}
+                        title={match.result}
                       >
                         {match.result === "Victory" ? "W" : match.result === "Defeat" ? "L" : "D"}
                       </span>
@@ -212,8 +220,18 @@ export default function Overview() {
                 <div className="overview-form-dots">
                   {form.length ? (
                     form.map((result, index) => (
-                      <i key={index} className={result === "W" ? "win" : "loss"}>
-                        {result === "W" ? "W" : "L"}
+                      <i
+                        key={index}
+                        className={
+                          result === "Victory"
+                            ? "win"
+                            : result === "Defeat"
+                              ? "loss"
+                              : "draw"
+                        }
+                        title={result}
+                      >
+                        {result === "Victory" ? "W" : result === "Defeat" ? "L" : "D"}
                       </i>
                     ))
                   ) : (
@@ -222,7 +240,9 @@ export default function Overview() {
                 </div>
                 <span className="overview-form-note">
                   {form.length
-                    ? `${formScore(form)} wins in the last ${form.length}`
+                    ? `${formTally.wins}W · ${formTally.losses}L${
+                        formTally.draws > 0 ? ` · ${formTally.draws}D` : ""
+                      } in the last ${form.length}`
                     : "Play a ranked match to build form"}
                 </span>
               </div>

@@ -370,6 +370,7 @@ export type Performance = {
     games: number;
     wins: number;
     losses: number;
+    draws: number;
     winRate: number;
     avgDelta: number;
     netRr: number;
@@ -385,6 +386,7 @@ export type Performance = {
     games: number;
     wins: number;
     losses: number;
+    draws: number;
     winRate: number;
     netRr: number;
   }[];

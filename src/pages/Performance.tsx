@@ -273,6 +273,7 @@ export default function Performance() {
             <strong>{pct(summary.winRate)}</strong>
             <em>
               {summary.wins}W · {summary.losses}L
+              {summary.draws > 0 ? ` · ${summary.draws}D` : ""}
             </em>
           </div>
           <div className="perf-stat">

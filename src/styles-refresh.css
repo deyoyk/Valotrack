@@ -2819,6 +2819,13 @@ summary:focus-visible,
   background: rgba(255, 255, 255, 0.018);
 }
 
+.overview-match > span:nth-child(2) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
 .overview-match strong {
   font-size: 13px;
 }
@@ -2911,6 +2918,12 @@ summary:focus-visible,
   color: var(--red);
   background: rgba(255, 70, 85, 0.08);
   border: 1px solid rgba(255, 70, 85, 0.2);
+}
+
+.overview-form-dots i.draw {
+  color: var(--dim);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .overview-form-dots em,

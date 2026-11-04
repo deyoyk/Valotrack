@@ -50,6 +50,7 @@ pub struct PlayerStats {
     pub done: bool,
     pub fetching: bool,
     pub at: Option<Instant>,
+    pub saved_at: i64,
 }
 
 impl PlayerStats {
@@ -60,62 +61,111 @@ impl PlayerStats {
     }
 }
 
-pub async fn board(state: &Arc<AppState>) -> Result<Value, String> {
-    let refresh = state.settings_snapshot().live_refresh_secs.max(1);
-    if let Some(cached) = state.live_cache.lock().as_ref() {
-        if cached.at.elapsed() < Duration::from_secs(refresh) {
-            return Ok(cached.value.clone());
+pub fn load_stats(data_dir: &std::path::Path) -> HashMap<String, PlayerStats> {
+    let data = crate::app::store::read(data_dir, "live-stats");
+    let mut out = HashMap::new();
+    let Some(players) = data.get("players").and_then(Value::as_object) else {
+        return out;
+    };
+    for (puuid, row) in players {
+        let mut stats = PlayerStats {
+            kd: row.get("kd").and_then(Value::as_f64),
+            hs: row.get("hs").and_then(Value::as_f64),
+            rr_earned: row.get("rrEarned").and_then(Value::as_i64),
+            intel: row.get("intel").cloned(),
+            level: row.get("level").and_then(Value::as_i64).unwrap_or(0) as i32,
+            done: row.get("done").and_then(Value::as_bool).unwrap_or(false),
+            saved_at: row.get("savedAt").and_then(Value::as_i64).unwrap_or(0),
+            ..Default::default()
+        };
+        if stats.done && stats.kd.is_none() && stats.intel.is_none() {
+            stats.done = false;
         }
+        out.insert(puuid.clone(), stats);
     }
-    let settings = state.settings_snapshot();
-    let session = match state.riot.session(&settings.region).await {
-        Ok(session) => session,
-        Err(error) => {
-            if let Some(cached) = state.live_cache.lock().as_ref() {
-                if cached.at.elapsed() < Duration::from_secs(60) {
-                    return Ok(cached.value.clone());
-                }
-            }
-            return Ok(json!({
-                "available": false,
-                "state": "OFFLINE",
-                "stateLabel": "Offline",
-                "source": "local",
-                "players": [],
-                "teams": {},
-                "parties": [],
-                "notice": {
-                    "level": "info",
-                    "action": "open_game",
-                    "message": error.to_string()
-                }
-            }));
+    out
+}
+
+pub fn save_stats(data_dir: &std::path::Path, stats: &HashMap<String, PlayerStats>) {
+    let mut rows: Vec<(&String, &PlayerStats)> = stats
+        .iter()
+        .filter(|(_, stats)| {
+            stats.kd.is_some()
+                || stats.hs.is_some()
+                || stats.intel.is_some()
+                || stats.level > 0
+                || stats.rr_earned.is_some()
+        })
+        .collect();
+    rows.sort_by_key(|(_, stats)| -stats.saved_at);
+    rows.truncate(400);
+    let mut players = serde_json::Map::new();
+    for (puuid, stats) in rows {
+        players.insert(
+            puuid.clone(),
+            json!({
+                "kd": stats.kd,
+                "hs": stats.hs,
+                "rrEarned": stats.rr_earned,
+                "intel": stats.intel,
+                "level": stats.level,
+                "done": stats.done,
+                "savedAt": stats.saved_at
+            }),
+        );
+    }
+    let _ = crate::app::store::write(data_dir, "live-stats", &json!({ "players": players }));
+}
+
+fn cached_live(state: &Arc<AppState>) -> Option<crate::app::CachedLive> {
+    state.live_cache.lock().clone()
+}
+
+fn live_refreshing(state: &Arc<AppState>) -> bool {
+    state
+        .meta
+        .lock()
+        .get("live-refreshing")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+}
+
+fn spawn_live_refresh(state: &Arc<AppState>) {
+    {
+        let mut meta = state.meta.lock();
+        if meta
+            .get("live-refreshing")
+            .and_then(Value::as_bool)
+            == Some(true)
+        {
+            return;
         }
-    };
-    let value = match build(state, session).await {
-        Ok(value) => value,
-        Err(error) => {
-            if let Some(cached) = state.live_cache.lock().as_ref() {
-                if cached.at.elapsed() < Duration::from_secs(90) {
-                    return Ok(cached.value.clone());
-                }
-            }
-            return Ok(json!({
-                "state": "CLIENT_BUSY",
-                "stateLabel": "Client busy",
-                "source": "local",
-                "players": [],
-                "teams": {},
-                "parties": [],
-                "notice": {
-                    "level": "warn",
-                    "action": "retry",
-                    "message": "Riot's local service is still starting. Retrying automatically."
-                },
-                "detail": error
-            }));
+        meta.insert("live-refreshing".into(), json!(true));
+    }
+    let worker = state.clone();
+    tauri::async_runtime::spawn(async move {
+        let settings = worker.settings_snapshot();
+        if let Ok(session) = worker.riot.session(&settings.region).await {
+            let _ = build_and_store(&worker, session).await;
         }
-    };
+        worker
+            .meta
+            .lock()
+            .insert("live-refreshing".into(), json!(false));
+    });
+}
+
+pub fn prewarm(state: &Arc<AppState>) {
+    spawn_live_refresh(state);
+}
+
+async fn build_and_store(
+    state: &Arc<AppState>,
+    session: Arc<Session>,
+) -> Result<Value, String> {
+    let mut value = build(state, session).await?;
+    annotate_rounds(state, &mut value);
+    value["builtAt"] = json!(crate::history::now());
     if let Some(self_player) = value
         .get("players")
         .and_then(Value::as_array)
@@ -138,6 +188,129 @@ pub async fn board(state: &Arc<AppState>) -> Result<Value, String> {
         value: value.clone(),
     });
     Ok(value)
+}
+
+fn merge_round_history(entry: &mut Value, ally: i64, enemy: i64) -> Vec<Value> {
+    let prev_ally = entry.get("ally").and_then(Value::as_i64).unwrap_or(0);
+    let prev_enemy = entry.get("enemy").and_then(Value::as_i64).unwrap_or(0);
+    let mut rounds: Vec<Value> = entry
+        .get("rounds")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    if ally < prev_ally || enemy < prev_enemy {
+        rounds.clear();
+    }
+    for _ in 0..(ally - prev_ally).max(0) {
+        rounds.push(json!("W"));
+    }
+    for _ in 0..(enemy - prev_enemy).max(0) {
+        rounds.push(json!("L"));
+    }
+    if rounds.len() > 30 {
+        rounds.drain(0..rounds.len() - 30);
+    }
+    entry["ally"] = json!(ally);
+    entry["enemy"] = json!(enemy);
+    entry["rounds"] = json!(rounds);
+    rounds
+}
+
+fn annotate_rounds(state: &Arc<AppState>, board: &mut Value) {
+    if board.get("state").and_then(Value::as_str) != Some("INGAME") {
+        return;
+    }
+    let match_id = board
+        .get("matchId")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_string();
+    if match_id.is_empty() {
+        return;
+    }
+    let Some(score) = board.get("score").and_then(Value::as_object) else {
+        return;
+    };
+    let ally = score.get("ally").and_then(Value::as_i64).unwrap_or(0);
+    let enemy = score.get("enemy").and_then(Value::as_i64).unwrap_or(0);
+    let key = format!("live-rounds:{match_id}");
+    let mut meta = state.meta.lock();
+    let fresh = !meta.contains_key(&key);
+    let entry = meta.entry(key).or_insert_with(|| json!({ "ally": ally, "enemy": enemy, "rounds": [] }));
+    let rounds = if fresh {
+        let existing = entry
+            .get("rounds")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        entry["ally"] = json!(ally);
+        entry["enemy"] = json!(enemy);
+        existing
+    } else {
+        merge_round_history(entry, ally, enemy)
+    };
+    board["score"]["rounds"] = json!(rounds);
+}
+
+pub async fn board(state: &Arc<AppState>) -> Result<Value, String> {
+    let refresh = state.settings_snapshot().live_refresh_secs.max(1);
+    if let Some(cached) = cached_live(state) {
+        if cached.at.elapsed() < Duration::from_secs(refresh) {
+            return Ok(cached.value);
+        }
+        if cached.at.elapsed() < Duration::from_secs(90) {
+            spawn_live_refresh(state);
+            return Ok(cached.value);
+        }
+    }
+    if live_refreshing(state) {
+        for _ in 0..25 {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            if let Some(cached) = cached_live(state) {
+                return Ok(cached.value);
+            }
+            if !live_refreshing(state) {
+                break;
+            }
+        }
+    }
+    let settings = state.settings_snapshot();
+    let session = match state.riot.session(&settings.region).await {
+        Ok(session) => session,
+        Err(error) => {
+            return Ok(json!({
+                "available": false,
+                "state": "OFFLINE",
+                "stateLabel": "Offline",
+                "source": "local",
+                "players": [],
+                "teams": {},
+                "parties": [],
+                "notice": {
+                    "level": "info",
+                    "action": "open_game",
+                    "message": error.to_string()
+                }
+            }));
+        }
+    };
+    match build_and_store(state, session).await {
+        Ok(value) => Ok(value),
+        Err(error) => Ok(json!({
+            "state": "CLIENT_BUSY",
+            "stateLabel": "Client busy",
+            "source": "local",
+            "players": [],
+            "teams": {},
+            "parties": [],
+            "notice": {
+                "level": "warn",
+                "action": "retry",
+                "message": "Riot's local service is still starting. Retrying automatically."
+            },
+            "detail": error
+        })),
+    }
 }
 
 async fn build(state: &Arc<AppState>, session: Arc<Session>) -> Result<Value, String> {
@@ -537,11 +710,29 @@ async fn build_players(
 
     let present: HashSet<String> = prepared.iter().map(|p| p.puuid.clone()).collect();
     let lookup = party_lookup(party_sets, &present);
+    let fallbacks = crate::encounters::stat_fallbacks(state);
 
     let mut players = Vec::new();
     for player in prepared {
         let agent = catalog::resolve_agent(&player.agent_id);
         let rank = ranks.get(&player.puuid).cloned().unwrap_or_default();
+        let fallback = fallbacks.get(&player.puuid);
+        let kd = player
+            .stats
+            .kd
+            .or_else(|| fallback.and_then(|(kd, _, _)| *kd));
+        let win_rate = if rank.win_rate > 0 {
+            rank.win_rate
+        } else {
+            fallback
+                .and_then(|(_, win_rate, _)| *win_rate)
+                .unwrap_or(0) as i32
+        };
+        let level = if player.level > 0 {
+            player.level
+        } else {
+            fallback.map(|(_, _, level)| *level).unwrap_or(0)
+        };
         let rank_meta = catalog::rank_from_tier(rank.tier);
         let peak_meta = catalog::rank_from_tier(rank.peak);
         let previous_meta = catalog::rank_from_tier(rank.previous);
@@ -551,13 +742,7 @@ async fn build_players(
         let peak_icon = (rank.peak > 0)
             .then(|| rank_icons.get(&rank.peak).and_then(|(small, _)| small.clone()))
             .flatten();
-        let (smurf, reasons) = smurf_signals(
-            player.level,
-            rank.peak,
-            player.stats.kd,
-            rank.win_rate,
-            rank.games,
-        );
+        let (smurf, reasons) = smurf_signals(level, rank.peak, kd, win_rate, rank.games);
         let peak_act = if rank.peak > 0 && !rank.peak_season.is_empty() {
             state.valo.season_label(&rank.peak_season).await
         } else {
@@ -623,13 +808,13 @@ async fn build_players(
             "peakIcon": peak_icon,
             "peakAct": peak_act,
             "previousRank": previous_meta.name,
-            "winRate": rank.win_rate,
+            "winRate": win_rate,
             "games": rank.games,
-            "kd": player.stats.kd,
+            "kd": kd,
             "hsPct": player.stats.hs,
             "skin": player.vandal,
             "weapons": player.weapons,
-            "level": player.level,
+            "level": level,
             "levelHidden": player.level_hidden,
             "party": lookup.get(&player.puuid),
             "smurf": smurf,
@@ -930,9 +1115,27 @@ async fn build_lobby(
         });
     }
     let ranks = fetch_ranks(state, &session, &prepared, &seasons).await;
+    let fallbacks = crate::encounters::stat_fallbacks(state);
     let mut players = Vec::new();
     for player in prepared {
         let rank = ranks.get(&player.puuid).cloned().unwrap_or_default();
+        let fallback = fallbacks.get(&player.puuid);
+        let kd = player
+            .stats
+            .kd
+            .or_else(|| fallback.and_then(|(kd, _, _)| *kd));
+        let win_rate = if rank.win_rate > 0 {
+            rank.win_rate
+        } else {
+            fallback
+                .and_then(|(_, win_rate, _)| *win_rate)
+                .unwrap_or(0) as i32
+        };
+        let level = if player.level > 0 {
+            player.level
+        } else {
+            fallback.map(|(_, _, level)| *level).unwrap_or(0)
+        };
         let rank_meta = catalog::rank_from_tier(rank.tier);
         let peak_meta = catalog::rank_from_tier(rank.peak);
         let previous_meta = catalog::rank_from_tier(rank.previous);
@@ -942,13 +1145,7 @@ async fn build_lobby(
         let peak_icon = (rank.peak > 0)
             .then(|| rank_icons.get(&rank.peak).and_then(|(small, _)| small.clone()))
             .flatten();
-        let (smurf, reasons) = smurf_signals(
-            player.level,
-            rank.peak,
-            player.stats.kd,
-            rank.win_rate,
-            rank.games,
-        );
+        let (smurf, reasons) = smurf_signals(level, rank.peak, kd, win_rate, rank.games);
         let peak_act = if rank.peak > 0 && !rank.peak_season.is_empty() {
             state.valo.season_label(&rank.peak_season).await
         } else {
@@ -991,13 +1188,13 @@ async fn build_lobby(
             "peakIcon": peak_icon,
             "peakAct": peak_act,
             "previousRank": previous_meta.name,
-            "winRate": rank.win_rate,
+            "winRate": win_rate,
             "games": rank.games,
-            "kd": player.stats.kd,
+            "kd": kd,
             "hsPct": player.stats.hs,
             "skin": Value::Null,
             "weapons": [],
-            "level": player.level,
+            "level": level,
             "levelHidden": player.level_hidden,
             "party": party,
             "smurf": smurf,
@@ -1068,7 +1265,7 @@ fn spawn_stats(state: &Arc<AppState>, session: Arc<Session>, puuids: Vec<String>
                     (puuid, snapshot)
                 }
             })
-            .buffer_unordered(4)
+            .buffer_unordered(8)
             .collect::<Vec<_>>()
             .await;
         let mut cache = state.stats.lock();
@@ -1086,8 +1283,12 @@ fn spawn_stats(state: &Arc<AppState>, session: Arc<Session>, puuids: Vec<String>
             }
             snapshot.fetching = false;
             snapshot.at = Some(Instant::now());
+            snapshot.saved_at = crate::history::now() as i64;
             cache.insert(puuid, snapshot);
         }
+        let persisted = cache.clone();
+        drop(cache);
+        save_stats(&state.data_dir, &persisted);
     });
 }
 
@@ -1256,6 +1457,7 @@ async fn fetch_stats(session: &Session, puuid: &str) -> PlayerStats {
         done: used > 0,
         fetching: false,
         at: None,
+        saved_at: crate::history::now() as i64,
     }
 }
 
@@ -1277,6 +1479,21 @@ pub async fn party_state(state: &Arc<AppState>) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn round_history_tracks_score_changes() {
+        let mut entry = json!({ "ally": 0, "enemy": 0, "rounds": [] });
+        assert_eq!(merge_round_history(&mut entry, 1, 0), vec![json!("W")]);
+        assert_eq!(
+            merge_round_history(&mut entry, 1, 1),
+            vec![json!("W"), json!("L")]
+        );
+        assert_eq!(
+            merge_round_history(&mut entry, 3, 1),
+            vec![json!("W"), json!("L"), json!("W"), json!("W")]
+        );
+        assert_eq!(merge_round_history(&mut entry, 0, 0), Vec::<Value>::new());
+    }
 
     #[test]
     fn closed_game_has_no_lobby_or_team() {

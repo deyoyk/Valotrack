@@ -149,6 +149,7 @@ pub fn run() {
                 apply_taskbar_icon(&window);
             }
             discord::spawn(state.clone());
+            crate::live::prewarm(&state);
             metrics::spawn(state);
             Ok(())
         })

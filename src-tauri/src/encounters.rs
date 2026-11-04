@@ -460,6 +460,36 @@ pub fn list(state: &Arc<AppState>, owner: Option<&str>, scope_all: bool) -> Valu
     })
 }
 
+pub fn stat_fallbacks(
+    state: &Arc<AppState>,
+) -> HashMap<String, (Option<f64>, Option<i64>, i32)> {
+    let data = store::read(&state.data_dir, "encounters");
+    let mut out: HashMap<String, (Option<f64>, Option<i64>, i32)> = HashMap::new();
+    let Some(accounts) = data.get("accounts").and_then(Value::as_object) else {
+        return out;
+    };
+    for account in accounts.values() {
+        let Some(players) = account.get("players").and_then(Value::as_object) else {
+            continue;
+        };
+        for (puuid, player) in players {
+            let entry = out.entry(puuid.clone()).or_insert((None, None, 0));
+            if let Some(kd) = player.get("kd").and_then(Value::as_f64) {
+                entry.0 = Some(kd);
+            }
+            if let Some(win_rate) = player.get("winRate").and_then(Value::as_i64) {
+                entry.1 = Some(win_rate);
+            }
+            if let Some(level) = player.get("level").and_then(Value::as_i64) {
+                if level > entry.2 as i64 {
+                    entry.2 = level as i32;
+                }
+            }
+        }
+    }
+    out
+}
+
 pub fn one(state: &Arc<AppState>, owner: Option<&str>, puuid: &str) -> Value {
     let data = store::read(&state.data_dir, "encounters");
     let accounts = data

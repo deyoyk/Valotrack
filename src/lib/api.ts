@@ -113,6 +113,7 @@ export type TeamStats = {
 
 export type LiveBoard = {
   available?: boolean;
+  builtAt?: number;
   state: string;
   stateLabel: string;
   source: string;

@@ -27,7 +27,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             region: String::new(),
-            live_refresh_secs: 4,
+            live_refresh_secs: 2,
             allow_live_actions: false,
             discord_rpc: true,
             favorite_crosshairs: Vec::new(),
@@ -137,6 +137,7 @@ impl AppState {
             .map_err(|e| e.to_string())?;
         let valo = Valo::new(http.clone());
         let offline = crate::offline_client::OfflineClient::new(&data_dir, http.clone());
+        let stats = crate::live::load_stats(&data_dir);
         Ok(Self {
             data_dir,
             http: http.clone(),
@@ -145,7 +146,7 @@ impl AppState {
             json_cache: Mutex::new(HashMap::new()),
             riot: RiotRuntime::new(http),
             valo,
-            stats: Mutex::new(HashMap::new()),
+            stats: Mutex::new(stats),
             ranks: Mutex::new(HashMap::new()),
             details: Mutex::new(HashMap::new()),
             meta: Mutex::new(HashMap::new()),
@@ -172,6 +173,7 @@ impl AppState {
             .map_err(|e| e.to_string())?;
         let valo = Valo::new(http.clone());
         let offline = crate::offline_client::OfflineClient::new(&data_dir, http.clone());
+        let stats = crate::live::load_stats(&data_dir);
         Ok(Self {
             data_dir,
             http: http.clone(),
@@ -180,7 +182,7 @@ impl AppState {
             json_cache: Mutex::new(HashMap::new()),
             riot: RiotRuntime::new(http),
             valo,
-            stats: Mutex::new(HashMap::new()),
+            stats: Mutex::new(stats),
             ranks: Mutex::new(HashMap::new()),
             details: Mutex::new(HashMap::new()),
             meta: Mutex::new(HashMap::new()),

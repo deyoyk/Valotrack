@@ -299,11 +299,17 @@ pub fn remote_info(state: State<'_, Arc<AppState>>) -> serde_json::Value {
 }
 
 #[tauri::command]
-pub fn encounters(
+pub async fn encounters(
     state: State<'_, Arc<AppState>>,
     scope: Option<String>,
-) -> serde_json::Value {
-    crate::encounters::list(state.inner(), None, scope.as_deref() == Some("all"))
+) -> Result<serde_json::Value, String> {
+    let app = state.inner().clone();
+    crate::encounters::spawn_refresh(&app);
+    Ok(crate::encounters::list(
+        &app,
+        None,
+        scope.as_deref() == Some("all"),
+    ))
 }
 
 #[tauri::command]

@@ -221,6 +221,19 @@ export type CareerPlayer = {
   headshots: number;
 };
 
+export type CareerRank = {
+  tier: number;
+  name: string;
+  color: string;
+  rr: number;
+  leaderboard: number;
+  peak: number;
+  peakName: string;
+  peakColor: string;
+  winRate: number;
+  games: number;
+};
+
 export type CareerProfile = {
   source: string;
   puuid: string;
@@ -255,6 +268,7 @@ export type CareerProfile = {
   }[];
   matches: CareerMatch[];
   encounter?: EncounterPlayer | null;
+  rank?: CareerRank | null;
 };
 
 export type EncounterPlayer = {
@@ -737,6 +751,7 @@ export type EncounterList = {
   players: EncounterPlayer[];
   accountCount: number;
   scope: string;
+  refreshing?: boolean;
 };
 
 export type SessionView = {

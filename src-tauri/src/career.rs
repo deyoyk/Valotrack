@@ -26,6 +26,29 @@ pub async fn profile(state: &Arc<AppState>, puuid: &str) -> Result<Value, String
         }
     }
     value["encounter"] = crate::encounters::one(state, None, puuid);
+    let seasons = session.seasons().await;
+    let active = Session::active_season(&seasons);
+    let previous = Session::previous_season(&seasons);
+    let rank = session
+        .rank_info(puuid, active.as_deref(), previous.as_deref())
+        .await;
+    if rank.ok && rank.tier > 0 {
+        let current = catalog::rank_from_tier(rank.tier);
+        let peak = catalog::rank_from_tier(rank.peak.max(rank.tier));
+        crate::encounters::set_rank(state, puuid, rank.tier, rank.peak, rank.win_rate);
+        value["rank"] = json!({
+            "tier": rank.tier,
+            "name": current.name,
+            "color": current.color,
+            "rr": rank.rr,
+            "leaderboard": rank.leaderboard,
+            "peak": peak.tier,
+            "peakName": peak.name,
+            "peakColor": peak.color,
+            "winRate": rank.win_rate,
+            "games": rank.games
+        });
+    }
     state.put_json(key, value.clone());
     Ok(value)
 }

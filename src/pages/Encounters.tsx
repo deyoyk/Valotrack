@@ -87,6 +87,14 @@ export default function Encounters() {
     void load(scope, true);
   }, [scope]);
 
+  useEffect(() => {
+    if (!data?.refreshing) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load(scope, true);
+    }, 3500);
+    return () => window.clearInterval(timer);
+  }, [data?.refreshing, scope]);
+
   const players = useMemo(() => {
     const needle = search.trim().toLowerCase();
     const rows = (data?.players ?? []).filter(
@@ -119,7 +127,13 @@ export default function Encounters() {
         </div>
         <div className="head-status">
           <span className="checked">
-            {data?.accountCount ?? 0} accounts · {total} encounters
+            {data?.refreshing ? (
+              <>
+                <RefreshCw size={12} className="spin" /> refreshing ranks from Riot
+              </>
+            ) : (
+              `${data?.accountCount ?? 0} accounts · ${total} encounters`
+            )}
           </span>
           <button className="button small" onClick={() => load(scope)} disabled={loading}>
             <RefreshCw size={13} className={loading ? "spin" : ""} /> Refresh

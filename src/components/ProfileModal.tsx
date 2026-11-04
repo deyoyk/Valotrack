@@ -69,6 +69,13 @@ export function ProfileModal({
   }, [agents, demo, player]);
 
   const encounters = profile?.encounter;
+  const liveRank = profile?.rank;
+  const rankName = liveRank?.name ?? player.rank;
+  const rankColor = liveRank?.color ?? player.rankColor;
+  const rankRr = liveRank?.rr ?? player.rr;
+  const peakName = liveRank?.peakName ?? player.peakRank;
+  const peakColor = liveRank?.peakColor ?? player.peakColor;
+  const peakTier = liveRank?.peak ?? player.peakRankTier;
   const trackerUrl = `https://tracker.gg/valorant/profile/riot/${encodeURIComponent(
     player.name.replace("#", "%23"),
   )}/overview`;
@@ -96,8 +103,8 @@ export function ProfileModal({
             </span>
             <h2>{player.name}</h2>
             <div className="profile-tags">
-              <span style={{ color: player.rankColor }}>{player.rank}</span>
-              {player.rr > 0 && <span>{player.rr} RR</span>}
+              <span style={{ color: rankColor }}>{rankName}</span>
+              {rankRr > 0 && <span>{rankRr} RR</span>}
               {player.level > 0 && <span>level {player.level}</span>}
               {player.isSelf && <em>you</em>}
               {player.smurf && (
@@ -121,7 +128,7 @@ export function ProfileModal({
               <span>headshots</span>
             </div>
             <div>
-              <strong>{player.peakRankTier > 0 ? player.peakRank : "-"}</strong>
+              <strong style={{ color: peakColor }}>{peakTier > 0 ? peakName : "-"}</strong>
               <span>peak</span>
             </div>
           </div>

@@ -159,6 +159,28 @@ export type InstalockStatus = {
   map: string | null;
 };
 
+export type SoundboardSound = {
+  id: string;
+  name: string;
+  file: string;
+  size: number;
+};
+
+export type SoundboardDevice = {
+  name: string;
+  isDefault: boolean;
+  isVirtual: boolean;
+};
+
+export type SoundboardSnapshot = {
+  sounds: SoundboardSound[];
+  outputs: SoundboardDevice[];
+  inputs: SoundboardDevice[];
+  selectedDevice: string;
+  volume: number;
+  folder: string;
+};
+
 export type QueueState = {
   available: boolean;
   partyId?: string;
@@ -841,6 +863,21 @@ export const api = {
     }),
   instalockStop: () => invoke<{ ok: boolean; running: boolean }>("instalock_stop"),
   instalockStatus: () => invoke<InstalockStatus>("instalock_status"),
+  soundboard: () => invoke<SoundboardSnapshot>("soundboard_snapshot"),
+  soundboardImport: (paths: string[]) =>
+    invoke<SoundboardSnapshot>("soundboard_import", { paths }),
+  soundboardRemove: (id: string) =>
+    invoke<SoundboardSnapshot>("soundboard_remove", { id }),
+  soundboardPlay: (id: string) =>
+    invoke<{ ok: boolean; id: string }>("soundboard_play", { id }),
+  soundboardStop: (id: string) =>
+    invoke<{ ok: boolean }>("soundboard_stop", { id }),
+  soundboardStopAll: () => invoke<{ ok: boolean }>("soundboard_stop_all"),
+  soundboardTest: () => invoke<{ ok: boolean }>("soundboard_test"),
+  soundboardSetDevice: (device: string) =>
+    invoke<SoundboardSnapshot>("soundboard_set_device", { device }),
+  soundboardSetVolume: (volume: number) =>
+    invoke<SoundboardSnapshot>("soundboard_set_volume", { volume }),
   profile: (puuid: string) => invoke<CareerProfile>("profile", { puuid }),
   matchDetail: (matchId: string, subject?: string) =>
     invoke<MatchDetail>("match_detail", { matchId, subject }),

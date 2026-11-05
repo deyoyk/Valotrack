@@ -119,6 +119,7 @@ pub struct AppState {
     pub details: Mutex<HashMap<String, (serde_json::Value, Instant)>>,
     pub meta: Mutex<HashMap<String, serde_json::Value>>,
     pub instalock: Arc<crate::instalock::InstalockState>,
+    pub soundboard: Arc<crate::soundboard::Soundboard>,
     pub offline: Arc<crate::offline_client::OfflineClient>,
     pub remote: Arc<crate::remote::RemoteState>,
 }
@@ -138,6 +139,7 @@ impl AppState {
         let valo = Valo::new(http.clone());
         let offline = crate::offline_client::OfflineClient::new(&data_dir, http.clone());
         let stats = crate::live::load_stats(&data_dir);
+        let soundboard = Arc::new(crate::soundboard::Soundboard::new(&data_dir));
         Ok(Self {
             data_dir,
             http: http.clone(),
@@ -151,6 +153,7 @@ impl AppState {
             details: Mutex::new(HashMap::new()),
             meta: Mutex::new(HashMap::new()),
             instalock: Arc::new(crate::instalock::InstalockState::new()),
+            soundboard,
             offline,
             remote: Arc::new(crate::remote::RemoteState::new()),
         })
@@ -174,6 +177,7 @@ impl AppState {
         let valo = Valo::new(http.clone());
         let offline = crate::offline_client::OfflineClient::new(&data_dir, http.clone());
         let stats = crate::live::load_stats(&data_dir);
+        let soundboard = Arc::new(crate::soundboard::Soundboard::new(&data_dir));
         Ok(Self {
             data_dir,
             http: http.clone(),
@@ -187,6 +191,7 @@ impl AppState {
             details: Mutex::new(HashMap::new()),
             meta: Mutex::new(HashMap::new()),
             instalock: Arc::new(crate::instalock::InstalockState::new()),
+            soundboard,
             offline,
             remote: Arc::new(crate::remote::RemoteState::new()),
         })

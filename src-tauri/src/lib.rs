@@ -27,6 +27,7 @@ mod remote;
 mod riot;
 mod sessions;
 mod social;
+mod soundboard;
 mod store;
 mod valo;
 
@@ -242,6 +243,15 @@ pub fn run() {
             commands::instalock_start,
             commands::instalock_stop,
             commands::instalock_status,
+            commands::soundboard_snapshot,
+            commands::soundboard_import,
+            commands::soundboard_remove,
+            commands::soundboard_play,
+            commands::soundboard_stop,
+            commands::soundboard_stop_all,
+            commands::soundboard_test,
+            commands::soundboard_set_device,
+            commands::soundboard_set_volume,
             commands::profile,
             commands::match_detail,
             commands::performance,

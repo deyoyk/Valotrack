@@ -213,6 +213,75 @@ pub fn instalock_status(state: State<'_, Arc<AppState>>) -> serde_json::Value {
 }
 
 #[tauri::command]
+pub fn soundboard_snapshot(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::snapshot(state.inner())
+}
+
+#[tauri::command]
+pub fn soundboard_import(
+    state: State<'_, Arc<AppState>>,
+    paths: Vec<String>,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::import(state.inner(), paths)
+}
+
+#[tauri::command]
+pub fn soundboard_remove(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::remove(state.inner(), id)
+}
+
+#[tauri::command]
+pub fn soundboard_play(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::play(state.inner(), id)
+}
+
+#[tauri::command]
+pub fn soundboard_stop(
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::stop(state.inner(), id)
+}
+
+#[tauri::command]
+pub fn soundboard_stop_all(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::stop_all(state.inner())
+}
+
+#[tauri::command]
+pub fn soundboard_test(
+    state: State<'_, Arc<AppState>>,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::test(state.inner())
+}
+
+#[tauri::command]
+pub fn soundboard_set_device(
+    state: State<'_, Arc<AppState>>,
+    device: String,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::set_device(state.inner(), device)
+}
+
+#[tauri::command]
+pub fn soundboard_set_volume(
+    state: State<'_, Arc<AppState>>,
+    volume: f32,
+) -> Result<serde_json::Value, String> {
+    crate::soundboard::set_volume(state.inner(), volume)
+}
+
+#[tauri::command]
 pub async fn profile(
     state: State<'_, Arc<AppState>>,
     puuid: String,

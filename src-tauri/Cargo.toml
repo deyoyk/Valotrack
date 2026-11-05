@@ -1,6 +1,6 @@
 [package]
 name = "valotrack"
-version = "1.0.146"
+version = "1.0.148"
 description = "Fast local VALORANT companion"
 authors = ["Valotrack"]
 edition = "2021"
@@ -45,6 +45,7 @@ qrcode = "0.14"
 image = { version = "0.25", default-features = false, features = ["png"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+rodio = { version = "0.23", default-features = false, features = ["playback", "mp3", "wav", "vorbis", "flac", "mp4"] }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }

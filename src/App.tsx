@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import {
   Activity,
+  AudioLines,
   Crosshair,
   Download,
   Grid3X3,
@@ -49,6 +50,7 @@ const Strategy = lazy(() => import("./pages/Strategy"));
 const Replays = lazy(() => import("./pages/Replays"));
 const Sensitivity = lazy(() => import("./pages/Sensitivity"));
 const AsciiStudio = lazy(() => import("./pages/AsciiStudio"));
+const Soundboard = lazy(() => import("./pages/Soundboard"));
 const Offline = lazy(() => import("./pages/Offline"));
 const Remote = lazy(() => import("./pages/Remote"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -77,6 +79,7 @@ type Page =
   | "callouts"
   | "strategy"
   | "replays"
+  | "soundboard"
   | "sensitivity"
   | "ascii"
   | "offline"
@@ -118,6 +121,7 @@ const toolsNav: NavItem[] = [
   { id: "callouts", label: "Callouts", icon: MapIcon },
   { id: "strategy", label: "Strategy", icon: Grid3X3 },
   { id: "replays", label: "Replays", icon: Play },
+  { id: "soundboard", label: "Soundboard", icon: AudioLines },
   { id: "sensitivity", label: "Sensitivity", icon: Trophy },
   { id: "ascii", label: "ASCII Studio", icon: Radio },
 ];
@@ -213,6 +217,8 @@ function Page({ page }: { page: Page }) {
       return <Strategy />;
     case "replays":
       return <Replays />;
+    case "soundboard":
+      return <Soundboard />;
     case "sensitivity":
       return <Sensitivity />;
     case "ascii":

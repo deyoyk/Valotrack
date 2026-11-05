@@ -18,6 +18,7 @@ import "./styles-advanced.css";
 import "./styles-readability.css";
 import "./styles-refresh.css";
 import "./styles-live.css";
+import "./styles-soundboard.css";
 
 applyPreferences(loadPreferences());
 

@@ -982,6 +982,13 @@ impl RiotRuntime {
         version
     }
 
+    /// Re-reads the local entitlements and rebuilds the cached session. Agent select
+    /// calls use this so they never run on a stale entitlement token.
+    pub async fn refresh_session(&self, region_override: &str) -> Result<Arc<Session>, RiotError> {
+        *self.cached.lock().await = None;
+        self.session(region_override).await
+    }
+
     pub async fn session(&self, region_override: &str) -> Result<Arc<Session>, RiotError> {
         let lockfile = read_lockfile()?;
         let version_hint = self.client_version_hint();

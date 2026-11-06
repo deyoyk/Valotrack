@@ -167,31 +167,6 @@ pub async fn instalock_start(
             )
         }));
     }
-    let session = state
-        .riot
-        .session(&settings.region)
-        .await
-        .map_err(|error| error.to_string())?;
-    let owned = crate::content::owned_ids_result(&session, crate::content::ITEM_AGENT)
-        .await
-        .map_err(|error| format!("Could not verify agent ownership: {error}"))?;
-    if !crate::catalog::is_agent_owned(&owned, resolved.uuid) {
-        return Err(format!(
-            "You don't own {} on this account.",
-            resolved.name
-        ));
-    }
-    for (map, name) in &overrides {
-        let Some(override_agent) = crate::catalog::resolve_agent(name) else {
-            return Err(format!("Unknown agent '{name}' for map '{map}'."));
-        };
-        if !crate::catalog::is_agent_owned(&owned, override_agent.uuid) {
-            return Err(format!(
-                "You don't own {} for map '{map}'.",
-                override_agent.name
-            ));
-        }
-    }
     state.instalock.start(
         state.inner().clone(),
         resolved.name.to_string(),

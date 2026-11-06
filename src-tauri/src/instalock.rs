@@ -1,7 +1,7 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::Arc,
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use parking_lot::Mutex;
@@ -10,11 +10,12 @@ use serde_json::{json, Value};
 use crate::{
     app::AppState,
     catalog::{self, Agent},
-    riot::CurrentMatch,
 };
 
 const MIN_DELAY_SECS: f64 = 4.0;
 const JITTER_SECS: f64 = 1.5;
+const POLL_SECS: f64 = 1.0;
+const RECONNECT_SECS: f64 = 1.5;
 
 pub struct InstalockState {
     pub status: Mutex<Value>,
@@ -49,25 +50,52 @@ fn normalize_per_map(per_map: &HashMap<String, String>) -> Result<HashMap<String
     Ok(out)
 }
 
-fn team_side(current: &CurrentMatch, puuid: &str) -> Option<&'static str> {
-    let team = current
-        .players
-        .iter()
-        .find(|player| player.get("Subject").and_then(Value::as_str) == Some(puuid))
-        .and_then(|player| player.get("TeamID"))
+/// Reads the agent-select phase from the player's own presence. An unreadable or
+/// plaintext presence is treated as unavailable instead of falling back to a guess.
+fn self_session_state(presences: &[Value], puuid: &str) -> Option<String> {
+    for presence in presences {
+        if presence.get("puuid").and_then(Value::as_str) != Some(puuid) {
+            continue;
+        }
+        let product = presence
+            .get("product")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        if !product.is_empty() && product != "valorant" {
+            continue;
+        }
+        let Some(private) = presence.get("private").and_then(Value::as_str) else {
+            return None;
+        };
+        if private.contains('{') {
+            return None;
+        }
+        let Some(data) = crate::riot::decode_private(private) else {
+            return None;
+        };
+        let data = data.get("matchPresenceData").unwrap_or(&data);
+        return data
+            .get("sessionLoopState")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+    }
+    None
+}
+
+fn map_id(game: &Value) -> &str {
+    game.get("MapID").and_then(Value::as_str).unwrap_or("")
+}
+
+fn side_from_match(game: &Value) -> Option<&'static str> {
+    match game
+        .get("AllyTeam")
+        .and_then(|team| team.get("TeamID"))
         .and_then(Value::as_str)
-        .or_else(|| {
-            current
-                .players
-                .first()
-                .and_then(|player| player.get("TeamID"))
-                .and_then(Value::as_str)
-        })?;
-    Some(if team == "Red" {
-        "Attacker"
-    } else {
-        "Defender"
-    })
+    {
+        Some("Red") => Some("Attacker"),
+        Some("Blue") => Some("Defender"),
+        _ => None,
+    }
 }
 
 fn pick_for_map(agent: Agent, per_map: &HashMap<String, String>, map_name: &str) -> Agent {
@@ -75,6 +103,29 @@ fn pick_for_map(agent: Agent, per_map: &HashMap<String, String>, map_name: &str)
         .get(&map_name.to_lowercase())
         .and_then(|name| catalog::resolve_agent(name))
         .unwrap_or(agent)
+}
+
+fn finish(
+    worker: &InstalockState,
+    status: &str,
+    message: String,
+    agent: Option<&str>,
+    map: Option<&str>,
+    side: Option<&str>,
+) {
+    let mut state = worker.status.lock();
+    state["running"] = json!(false);
+    state["status"] = json!(status);
+    state["message"] = json!(message);
+    if let Some(agent) = agent {
+        state["agent"] = json!(agent);
+    }
+    if let Some(map) = map {
+        state["map"] = json!(map);
+    }
+    if let Some(side) = side {
+        state["side"] = json!(side);
+    }
 }
 
 impl InstalockState {
@@ -126,6 +177,9 @@ impl InstalockState {
         if mode != "lock" && mode != "hover" {
             return Err("Mode must be 'lock' or 'hover'.".to_string());
         }
+        if !state.settings_snapshot().allow_live_actions {
+            return Err("Live actions are disabled.".to_string());
+        }
         let per_map = normalize_per_map(&per_map)?;
         let delay = effective_delay(delay, jitter_seed());
         self.stop();
@@ -136,7 +190,7 @@ impl InstalockState {
         status["mode"] = json!(mode.clone());
         status["side"] = Value::Null;
         status["map"] = Value::Null;
-        status["message"] = json!("Armed - waiting for agent select...");
+        status["message"] = json!("Armed — waiting for agent select…");
         drop(status);
         let worker = self.clone();
         let handle = tauri::async_runtime::spawn(loop_pick(
@@ -156,7 +210,7 @@ impl InstalockState {
             "status": "waiting",
             "perMap": per_map,
             "delay": (delay * 10.0).round() / 10.0,
-            "message": "Armed - waiting for agent select..."
+            "message": "Armed — waiting for agent select…"
         }))
     }
 }
@@ -169,156 +223,182 @@ async fn loop_pick(
     delay: f64,
     per_map: HashMap<String, String>,
 ) {
-    let mut offline_since: Option<Instant> = None;
+    let mut done: HashSet<String> = HashSet::new();
     loop {
         let settings = state.settings_snapshot();
         if !settings.allow_live_actions {
-            let mut status = worker.status.lock();
-            status["running"] = json!(false);
-            status["status"] = json!("stopped");
-            status["message"] = json!("Live actions were disabled.");
+            finish(
+                &worker,
+                "stopped",
+                "Live actions were disabled.".to_string(),
+                None,
+                None,
+                None,
+            );
             return;
         }
         let session = match state.riot.session(&settings.region).await {
             Ok(session) => session,
             Err(error) => {
-                let mut status = worker.status.lock();
-                status["running"] = json!(false);
-                status["status"] = json!("error");
-                status["message"] = json!(error.to_string());
+                finish(
+                    &worker,
+                    "error",
+                    format!("Couldn't reach the local client: {error}"),
+                    None,
+                    None,
+                    None,
+                );
                 return;
             }
         };
         let presences = match session.presences().await {
             Ok(presences) => presences,
             Err(_) => {
-                let since = offline_since.get_or_insert_with(Instant::now);
-                if since.elapsed() > Duration::from_secs(15) {
-                    let mut status = worker.status.lock();
-                    status["running"] = json!(false);
-                    status["status"] = json!("error");
-                    status["message"] =
-                        json!("Local client not reachable - is VALORANT open and signed in?");
-                    return;
-                }
-                tokio::time::sleep(Duration::from_millis(1500)).await;
-                continue;
+                finish(
+                    &worker,
+                    "error",
+                    "Local client not reachable — is VALORANT open?".to_string(),
+                    None,
+                    None,
+                    None,
+                );
+                return;
             }
         };
-        let game_state = session.game_state(&presences);
-        if game_state == "OFFLINE" {
-            let since = offline_since.get_or_insert_with(Instant::now);
-            if since.elapsed() > Duration::from_secs(15) {
-                let mut status = worker.status.lock();
-                status["running"] = json!(false);
-                status["status"] = json!("error");
-                status["message"] =
-                    json!("Local client not reachable - is VALORANT open and signed in?");
-                return;
-            }
-        } else {
-            offline_since = None;
-        }
-        if game_state == "PREGAME" {
-            let Some(mut current) = session
-                .current_match("PREGAME")
+        let Some(loop_state) = self_session_state(&presences, &session.puuid) else {
+            finish(
+                &worker,
+                "error",
+                "Local client not reachable — is VALORANT open?".to_string(),
+                None,
+                None,
+                None,
+            );
+            return;
+        };
+        if loop_state == "PREGAME" {
+            // Agent select hands out a fresh entitlement; use it for the pick.
+            let session = state
+                .riot
+                .refresh_session(&settings.region)
+                .await
+                .unwrap_or(session);
+            let match_id = session
+                .glz_get(&format!("/pregame/v1/players/{}", session.puuid))
                 .await
                 .ok()
-                .flatten()
-            else {
-                tokio::time::sleep(Duration::from_millis(1200)).await;
-                continue;
-            };
-            let mut map_name = catalog::map_name_from_id(&current.map_id);
-            let mut tries = 0;
-            while (map_name.is_empty() || map_name == "Unknown") && tries < 3 {
-                tries += 1;
-                tokio::time::sleep(Duration::from_secs(1)).await;
-                if let Ok(Some(fresh)) = session.current_match("PREGAME").await {
-                    current = fresh;
-                    map_name = catalog::map_name_from_id(&current.map_id);
+                .and_then(|player| {
+                    player
+                        .get("MatchID")
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+                .filter(|id| !id.is_empty() && !done.contains(id));
+            if let Some(match_id) = match_id {
+                if delay > 0.0 {
+                    tokio::time::sleep(Duration::from_secs_f64(delay)).await;
                 }
-            }
-            tokio::time::sleep(Duration::from_secs_f64(delay)).await;
-            if !state.settings_snapshot().allow_live_actions {
-                let mut status = worker.status.lock();
-                status["running"] = json!(false);
-                status["status"] = json!("stopped");
-                status["message"] = json!("Live actions were disabled.");
-                return;
-            }
-            let base = catalog::resolve_agent(agent_name).expect("validated agent");
-            let choice = pick_for_map(base, &per_map, &map_name);
-            let side = team_side(&current, &session.puuid);
-            let select = session
-                .glz_post(
-                    &format!(
-                        "/pregame/v1/matches/{}/select/{}",
-                        current.match_id, choice.uuid
-                    ),
-                    None,
-                )
-                .await;
-            let select_status = select.map(|response| response.status().as_u16()).unwrap_or(0);
-            let mut ok = (200..300).contains(&select_status);
-            let mut http_status = select_status;
-            if ok && mode == "lock" {
-                if let Ok(response) = session
+                let path = format!("/pregame/v1/matches/{match_id}");
+                let mut game = session
+                    .glz_get(&path)
+                    .await
+                    .unwrap_or_else(|_| json!({}));
+                let mut tries = 0;
+                while !per_map.is_empty() && map_id(&game).is_empty() && tries < 3 {
+                    tries += 1;
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    if let Ok(fresh) = session.glz_get(&path).await {
+                        game = fresh;
+                    }
+                }
+                let side = side_from_match(&game);
+                let map_name = catalog::map_name_from_id(map_id(&game));
+                let base = catalog::resolve_agent(agent_name).expect("validated agent");
+                let choice = pick_for_map(base, &per_map, &map_name);
+                let select = session
                     .glz_post(
                         &format!(
-                            "/pregame/v1/matches/{}/lock/{}",
-                            current.match_id, choice.uuid
+                            "/pregame/v1/matches/{match_id}/select/{}",
+                            choice.uuid
                         ),
                         None,
                     )
-                    .await
-                {
-                    http_status = response.status().as_u16();
-                    ok = (200..300).contains(&http_status);
-                } else {
-                    ok = false;
-                    http_status = 0;
+                    .await;
+                let Ok(select) = select else {
+                    let _ = state.riot.refresh_session(&settings.region).await;
+                    tokio::time::sleep(Duration::from_secs_f64(RECONNECT_SECS)).await;
+                    continue;
+                };
+                let mut http_status = select.status().as_u16();
+                if mode == "lock" && http_status < 400 {
+                    let lock = session
+                        .glz_post(
+                            &format!(
+                                "/pregame/v1/matches/{match_id}/lock/{}",
+                                choice.uuid
+                            ),
+                            None,
+                        )
+                        .await;
+                    let Ok(lock) = lock else {
+                        let _ = state.riot.refresh_session(&settings.region).await;
+                        tokio::time::sleep(Duration::from_secs_f64(RECONNECT_SECS)).await;
+                        continue;
+                    };
+                    http_status = lock.status().as_u16();
                 }
+                done.insert(match_id);
+                if http_status >= 400 {
+                    finish(
+                        &worker,
+                        "error",
+                        format!(
+                            "Riot refused {} (HTTP {http_status}) — pick manually.",
+                            choice.name
+                        ),
+                        Some(choice.name),
+                        Some(&map_name),
+                        side,
+                    );
+                } else {
+                    let action = if mode == "lock" { "Locked" } else { "Hovered" };
+                    let mut message = format!("{action} {}", choice.name);
+                    if !map_name.is_empty() && map_name != "Unknown" {
+                        message.push_str(&format!(" on {map_name}"));
+                    }
+                    message.push('!');
+                    if let Some(side) = side {
+                        message.push_str(&format!("  You're {side}."));
+                    }
+                    finish(
+                        &worker,
+                        "locked",
+                        message,
+                        Some(choice.name),
+                        Some(&map_name),
+                        side,
+                    );
+                }
+                return;
             }
-            let mut status = worker.status.lock();
-            status["running"] = json!(false);
-            status["status"] = json!(if ok { "locked" } else { "error" });
-            status["agent"] = json!(choice.name);
-            status["side"] = json!(side);
-            status["map"] = json!(map_name);
-            let action = if mode == "lock" { "Locked" } else { "Hovered" };
-            status["message"] = json!(if ok {
-                format!(
-                    "{action} {}{}{}",
-                    choice.name,
-                    if map_name.is_empty() || map_name == "Unknown" {
-                        String::new()
-                    } else {
-                        format!(" on {map_name}")
-                    },
-                    side.map(|side| format!(" - you're {side}."))
-                        .unwrap_or_else(|| ".".to_string())
-                )
-            } else if http_status >= 400 {
-                format!(
-                    "Riot refused {} (HTTP {http_status}) - pick manually.",
-                    choice.name
-                )
-            } else {
-                format!(
-                    "Couldn't reach agent select for {} - pick manually.",
-                    choice.name
-                )
-            });
-            return;
         }
-        tokio::time::sleep(Duration::from_millis(1200)).await;
+        tokio::time::sleep(Duration::from_secs_f64(POLL_SECS)).await;
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use base64::{engine::general_purpose::STANDARD, Engine};
+
+    fn presence(state: &str) -> Value {
+        let private = json!({ "matchPresenceData": { "sessionLoopState": state } }).to_string();
+        json!({
+            "puuid": "me",
+            "product": "valorant",
+            "private": STANDARD.encode(private),
+        })
+    }
 
     #[test]
     fn delay_keeps_scout_minimum_and_jitter() {
@@ -356,21 +436,43 @@ mod tests {
     }
 
     #[test]
-    fn side_comes_from_the_self_player() {
-        let current = CurrentMatch {
-            players: vec![json!({ "Subject": "mate", "TeamID": "Blue" })],
-            match_id: "match".to_string(),
-            map_id: String::new(),
-            queue: String::new(),
-        };
-        assert_eq!(team_side(&current, "mate"), Some("Defender"));
+    fn session_state_reads_own_presence() {
+        assert_eq!(
+            self_session_state(&[presence("PREGAME")], "me").as_deref(),
+            Some("PREGAME")
+        );
+        assert_eq!(self_session_state(&[presence("PREGAME")], "someone-else"), None);
+    }
 
-        let current = CurrentMatch {
-            players: vec![json!({ "Subject": "mate", "TeamID": "Red" })],
-            match_id: "match".to_string(),
-            map_id: String::new(),
-            queue: String::new(),
-        };
-        assert_eq!(team_side(&current, "mate"), Some("Attacker"));
+    #[test]
+    fn session_state_rejects_plaintext_presence() {
+        let spoofed = json!({
+            "puuid": "me",
+            "product": "valorant",
+            "private": "{\"sessionLoopState\":\"PREGAME\"}"
+        });
+        assert_eq!(self_session_state(&[spoofed], "me"), None);
+    }
+
+    #[test]
+    fn side_comes_from_the_ally_team() {
+        assert_eq!(
+            side_from_match(&json!({ "AllyTeam": { "TeamID": "Red" } })),
+            Some("Attacker")
+        );
+        assert_eq!(
+            side_from_match(&json!({ "AllyTeam": { "TeamID": "Blue" } })),
+            Some("Defender")
+        );
+        assert_eq!(side_from_match(&json!({})), None);
+    }
+
+    #[test]
+    fn map_id_reads_the_match_payload() {
+        assert_eq!(
+            map_id(&json!({ "MapID": "/Game/Maps/Ascent/Ascent" })),
+            "/Game/Maps/Ascent/Ascent"
+        );
+        assert_eq!(map_id(&json!({})), "");
     }
 }

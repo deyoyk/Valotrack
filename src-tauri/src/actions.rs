@@ -305,50 +305,56 @@ pub async fn live_instalock(
         Ok(session) => session,
         Err(error) => return json!({ "ok": false, "message": error.to_string() }),
     };
-    let owned = match crate::content::owned_ids_result(&session, crate::content::ITEM_AGENT).await {
-        Ok(owned) => owned,
-        Err(error) => {
-            return json!({
-                "ok": false,
-                "message": format!("Could not verify agent ownership: {error}")
-            })
-        }
-    };
-    if !crate::catalog::is_agent_owned(&owned, agent.uuid) {
+    let Some(match_id) = pregame_match_id(&session).await else {
         return json!({
             "ok": false,
-            "message": format!("You don't own {} on this account.", agent.name)
+            "status": "error",
+            "message": "Not in agent select (no pregame match)."
         });
-    }
-    let Some(match_id) = pregame_match_id(&session).await else {
-        return json!({ "ok": false, "message": "Not in agent select." });
     };
-    let mut ok = session
+    let mut http_status = match session
         .glz_post(
             &format!("/pregame/v1/matches/{match_id}/select/{}", agent.uuid),
             None,
         )
         .await
-        .map(|response| response.status().is_success())
-        .unwrap_or(false);
-    if ok && mode == "lock" {
-        ok = session
+    {
+        Ok(response) => response.status().as_u16(),
+        Err(error) => {
+            return json!({
+                "ok": false,
+                "status": "error",
+                "message": format!("Instalock failed: {error}")
+            })
+        }
+    };
+    if mode == "lock" && http_status < 400 {
+        http_status = match session
             .glz_post(
                 &format!("/pregame/v1/matches/{match_id}/lock/{}", agent.uuid),
                 None,
             )
             .await
-            .map(|response| response.status().is_success())
-            .unwrap_or(false);
+        {
+            Ok(response) => response.status().as_u16(),
+            Err(error) => {
+                return json!({
+                    "ok": false,
+                    "status": "error",
+                    "message": format!("Instalock failed: {error}")
+                })
+            }
+        };
     }
+    let locked = http_status < 400;
     json!({
-        "ok": ok,
-        "status": if ok { "locked" } else { "error" },
+        "ok": locked,
+        "status": if locked { "locked" } else { "error" },
         "agent": agent.name,
-        "message": if ok {
-            format!("{mode}ed {}.", agent.name)
+        "message": if locked {
+            format!("{} {}.", if mode == "lock" { "Locked" } else { "Hovered" }, agent.name)
         } else {
-            format!("Riot refused {}.", agent.name)
+            format!("Riot refused {} (HTTP {http_status}).", agent.name)
         }
     })
 }

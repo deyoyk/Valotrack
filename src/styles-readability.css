@@ -224,12 +224,9 @@
 .ascii-detail-foot{font-size:11.5px;}
 .lineup-map-tabs button{font-size:11.5px;}
 .lineup-map-tabs button em{font-size:10.5px;}
-.lineup-pin{font-size:10.5px;}
-.lineup-thumb span{font-size:10.5px;}
-.lineup-active-info p{font-size:11px;}
-.lineup-row-info strong{font-size:11.5px;}
-.lineup-row-info em{font-size:11px;}
-.lineup-row-info small{font-size:10.5px;}
+.lineup-spot{font-size:10.5px;}
+.lineup-row-body strong{font-size:12px;}
+.lineup-row-body small{font-size:9.5px;}
 .map-tabs button{font-size:11.5px;}
 .callout-hint{font-size:11px;}
 .callout-pin{font-size:10.5px;}

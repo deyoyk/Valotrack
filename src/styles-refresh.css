@@ -1072,107 +1072,6 @@ summary:focus-visible,
   font-size: 13px;
 }
 
-.lineups-grid {
-  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.7fr);
-  gap: 18px;
-}
-
-.lineup-map-tabs {
-  flex-wrap: wrap;
-}
-
-.lineup-map-panel,
-.lineup-list-panel {
-  padding: 22px;
-}
-
-.lineup-map {
-  border-radius: 10px;
-}
-
-.lineup-pin {
-  width: 24px;
-  height: 24px;
-  font-size: 10px;
-}
-
-.lineup-end {
-  width: 7px;
-  height: 7px;
-}
-
-.lineup-active-card {
-  gap: 16px;
-  padding: 16px;
-}
-
-.lineup-list-panel .lineup-active-card {
-  display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px 12px;
-  margin: 0 0 16px;
-  border-radius: 9px;
-}
-
-.lineup-list-panel .lineup-thumb {
-  width: 78px;
-  height: 52px;
-  flex-basis: 78px;
-}
-
-.lineup-list-panel .lineup-actions {
-  grid-column: 1 / -1;
-}
-
-.lineup-list-panel .lineup-actions .button {
-  flex: 1;
-}
-
-.lineup-active-info h3 {
-  font-size: 22px;
-}
-
-.lineup-active-info p {
-  font-size: 12px;
-}
-
-.lineup-toolbar {
-  gap: 9px;
-  flex-wrap: wrap;
-}
-
-.lineup-list {
-  max-height: 700px;
-}
-
-.lineup-row {
-  gap: 12px;
-  padding: 10px 12px;
-}
-
-.lineup-row-thumb {
-  width: 52px;
-  height: 40px;
-  flex-basis: 52px;
-}
-
-.lineup-row-info {
-  gap: 2px;
-}
-
-.lineup-row-info strong {
-  font-size: 13px;
-}
-
-.lineup-row-info em {
-  font-size: 12.5px;
-}
-
-.lineup-row-info small {
-  font-size: 11px;
-}
-
 .callouts-grid {
   grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.7fr);
   gap: 18px;
@@ -3211,7 +3110,6 @@ html[data-reduce-motion="true"] *::after {
 .crosshair-card,
 .ascii-card,
 .store-card,
-.lineup-row,
 .callout-row,
 .friend-row,
 .overview-quick button {
@@ -3229,7 +3127,6 @@ html[data-reduce-motion="true"] *::after {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.26);
 }
 
-.lineup-row:hover,
 .callout-row:hover,
 .friend-row:hover,
 .overview-quick button:hover {
@@ -3259,8 +3156,7 @@ html[data-reduce-motion="true"] *::after {
   animation: vt-pop 0.18s ease-out both;
 }
 
-.callout-pin,
-.lineup-pin {
+.callout-pin {
   transition:
     transform 0.16s ease,
     background 0.16s ease,
@@ -3268,14 +3164,9 @@ html[data-reduce-motion="true"] *::after {
     opacity 0.16s ease;
 }
 
-.callout-pin:hover,
-.lineup-pin:hover {
+.callout-pin:hover {
   transform: translate(-50%, -50%) scale(1.12);
   z-index: 5;
-}
-
-.lineup-end {
-  animation: vt-pop 0.24s ease-out both;
 }
 
 .strategy-object {
@@ -3450,7 +3341,6 @@ html[data-reduce-motion="true"] *::after {
     align-items: flex-start;
   }
 
-  .lineups-grid,
   .callouts-grid,
   .replay-layout,
   .sens-hero-grid,

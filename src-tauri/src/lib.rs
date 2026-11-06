@@ -1,8 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![recursion_limit = "256"]
 
-mod actions;
 mod account;
+mod actions;
 mod app;
 mod career;
 mod catalog;
@@ -87,27 +87,12 @@ fn apply_taskbar_icon(window: &tauri::WebviewWindow) {
             return;
         }
         if !big.is_null() {
-            SendMessageW(
-                hwnd.0,
-                WM_SETICON,
-                ICON_BIG as usize,
-                big as isize,
-            );
+            SendMessageW(hwnd.0, WM_SETICON, ICON_BIG as usize, big as isize);
         }
         let small = if small.is_null() { big } else { small };
         if !small.is_null() {
-            SendMessageW(
-                hwnd.0,
-                WM_SETICON,
-                ICON_SMALL as usize,
-                small as isize,
-            );
-            SendMessageW(
-                hwnd.0,
-                WM_SETICON,
-                ICON_SMALL2 as usize,
-                small as isize,
-            );
+            SendMessageW(hwnd.0, WM_SETICON, ICON_SMALL as usize, small as isize);
+            SendMessageW(hwnd.0, WM_SETICON, ICON_SMALL2 as usize, small as isize);
         }
     }
 }
@@ -141,6 +126,132 @@ fn refresh_shell_icons(data_dir: &std::path::Path) {
     }
 }
 
+#[cfg(windows)]
+const UPDATER_BYTES: &[u8] = include_bytes!("updater.exe");
+
+#[cfg(windows)]
+fn updater_log(stage_dir: &std::path::Path, message: &str) {
+    use std::io::Write;
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(stage_dir.join("launch.log"))
+    {
+        let stamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        let _ = writeln!(file, "[{stamp}] {message}");
+    }
+}
+
+#[cfg(windows)]
+fn launch_updater(data_dir: &std::path::Path) {
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+    // Stage a copy tagged with the app version so a still-running updater from an
+    // earlier launch cannot lock the file that has to be replaced.
+    let stage_dir = data_dir.join("updater");
+    if std::fs::create_dir_all(&stage_dir).is_err() {
+        return;
+    }
+    // Fingerprint the payload so a rebuilt updater.exe is staged again even when the
+    // app version did not change.
+    let mut fingerprint: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in UPDATER_BYTES {
+        fingerprint ^= *byte as u64;
+        fingerprint = fingerprint.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    let file_name = format!(
+        "updater-{}-{fingerprint:016x}.exe",
+        env!("CARGO_PKG_VERSION")
+    );
+    let exe_path = stage_dir.join(&file_name);
+    let staged_len = std::fs::metadata(&exe_path)
+        .map(|meta| meta.len())
+        .unwrap_or(0);
+    if staged_len != UPDATER_BYTES.len() as u64 {
+        match std::fs::write(&exe_path, UPDATER_BYTES) {
+            Ok(()) => updater_log(&stage_dir, &format!("staged {file_name}")),
+            Err(err) => {
+                updater_log(&stage_dir, &format!("stage failed: {err}"));
+                return;
+            }
+        }
+    }
+
+    // Drop copies staged by older builds. Files still in use stay until a later run.
+    if let Ok(entries) = std::fs::read_dir(&stage_dir) {
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with("updater-")
+                && name.ends_with(".exe")
+                && name.as_ref() != file_name.as_str()
+            {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
+    }
+
+    // The updater is a console program. CREATE_NO_WINDOW stops Windows from
+    // allocating a console window. Anything it prints goes to a log file instead of
+    // a console.
+    let output_log = std::fs::File::create(stage_dir.join("updater-output.log")).ok();
+    let mut command = std::process::Command::new(&exe_path);
+    command.stdin(std::process::Stdio::null());
+    match output_log {
+        Some(file) => {
+            let stderr = file.try_clone().ok();
+            command.stdout(std::process::Stdio::from(file));
+            command.stderr(match stderr {
+                Some(stderr) => std::process::Stdio::from(stderr),
+                None => std::process::Stdio::null(),
+            });
+        }
+        None => {
+            command
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null());
+        }
+    }
+    command.creation_flags(CREATE_NO_WINDOW);
+    if let Some(dir) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(std::path::Path::to_path_buf))
+    {
+        command.current_dir(dir);
+    }
+    match command.spawn() {
+        Ok(mut child) => {
+            updater_log(
+                &stage_dir,
+                &format!("started {} pid={}", exe_path.display(), child.id()),
+            );
+            let log_dir = stage_dir.clone();
+            std::thread::spawn(move || {
+                let message = match child.wait() {
+                    Ok(status) => format!("exited {status}"),
+                    Err(err) => format!("wait failed: {err}"),
+                };
+                updater_log(&log_dir, &message);
+            });
+        }
+        Err(err) => updater_log(
+            &stage_dir,
+            &format!("spawn failed: {err} (raw os error {:?})", err.raw_os_error()),
+        ),
+    }
+}
+
+#[cfg(not(windows))]
+fn launch_updater(_data_dir: &std::path::Path) {}
+
+fn spawn_updater_background(data_dir: std::path::PathBuf) {
+    let _ = std::thread::Builder::new()
+        .name("updater-launch".into())
+        .spawn(move || launch_updater(&data_dir));
+}
+
 pub fn run() {
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|arg| arg == offline::HELPER_FLAG) {
@@ -165,6 +276,7 @@ pub fn run() {
             let handle = app.handle();
             let state = Arc::new(AppState::new(handle)?);
             refresh_shell_icons(&state.data_dir);
+            spawn_updater_background(state.data_dir.clone());
             app.manage(state.clone());
             if let Some(window) = app.get_webview_window("main") {
                 if let Ok(icon) =
